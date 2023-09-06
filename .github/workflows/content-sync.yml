@@ -46,8 +46,8 @@ jobs:
       - name: Build role name
         run: |
           # Use shell string manipulation to extract the repository name
-                                                      #Name of repo that triggered the workflow
-          ROLE_NAME="arn:aws:iam::${AWS_ACCOUNT}:role/${{ github.event.repository.name }}-repo"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          ROLE_NAME="arn:aws:iam::${AWS_ACCOUNT}:role/${REPO_NAME}-repo"
           # Set the environment variable for future steps
           echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
 
