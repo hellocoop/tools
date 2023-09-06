@@ -1,0 +1,68 @@
+#
+# Copying instructions
+#
+# the STACK must be the cloud formation stack that created the S3 bucket and distribution
+#
+
+name: Sync content with S3
+
+on:
+  workflow_call:
+    inputs:
+      STACK:
+        required: true
+        type: string
+
+env:
+  AWS_ACCOUNT: ${{ vars.HELLO_PROD_AWS }} # set at org level 
+
+jobs:
+  # GitHub-Slack app sends a workflow status message with live updates to #content-updates channel
+  sync:
+    name: Upload to Amazon S3
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install modules and cache
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Restore npm cache
+        run: npm ci
+
+      - name: Build content
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build role name
+        run: |
+          # Use shell string manipulation to extract the repository name
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          ROLE_NAME="arn:aws:iam::${AWS_ACCOUNT}:role/${REPO_NAME}-repo"
+          # Set the environment variable for future steps
+          echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
+
+      - name: Configure web-sync AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ env.ROLE_NAME }} 
+          aws-region: us-west-2
+
+      - name: Copy S3 dir to S3 bucket with the AWS CLI
+        run: |
+          BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)
+          aws s3 sync S3/ s3://${BUCKET_NAME}/
+
+      - name: Invalidate CloudFront cache
+        run: |
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
+          aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
