@@ -1,0 +1,31 @@
+name: Ready for merge
+
+on:
+  workflow_call:
+    
+jobs: 
+  run_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get latest changes from main
+        run: |
+          git fetch origin
+          git checkout origin/$GITHUB_HEAD_REF
+          git pull origin main --rebase
+
+      - name: Install modules and cache
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Restore npm cache
+        run: npm ci
+
+      - name: Build and run tests
+        run: |
+          npm run build
+          npm run test
