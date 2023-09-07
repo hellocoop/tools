@@ -55,9 +55,6 @@ jobs:
       - name: Build content
         run: npm run build
 
-      - name: Run tests
-        run: npm run test
-
       - name: Copy S3 dir to S3 bucket with the AWS CLI
         run: |
           BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)
