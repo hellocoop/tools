@@ -18,9 +18,6 @@ on:
       NODE_ENV:
         required: true
         type: string
-      VAULT:
-        required: true
-        type: string
       VAULT_CMD:
         required: true
         type: string
