@@ -17,7 +17,7 @@ env:
   AWS_ACCOUNT: ${{ vars.HELLO_PROD_AWS }} # set at org level 
 
 jobs:
-  # GitHub-Slack app sends a workflow status message with live updates to #content-updates channel
+  # GitHub-Slack app sends a workflow status message with live updates to #content-* channel
   sync:
     name: Upload to Amazon S3
     runs-on: ubuntu-latest
