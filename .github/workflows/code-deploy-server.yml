@@ -2,6 +2,9 @@ name: Stage/Beta server
 
 on:
   workflow_call:
+    secrets:
+      VAULT:
+        required: true
     inputs:
       AWS_ACCOUNT:
         required: true
@@ -74,7 +77,7 @@ jobs:
           fi
 
       - name: Get vault.json
-        run: echo "${{ inputs.VAULT }}" | ${{inputs.VAULT_CMD}}
+        run: echo "${{ secrets.VAULT }}" | ${{inputs.VAULT_CMD}}
 
       - name: Set GIT_COMMIT to ENV
         run: |
