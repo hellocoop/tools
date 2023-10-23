@@ -1,0 +1,47 @@
+name: Increment version
+
+on:
+  workflow_call:
+        
+jobs: 
+  version:
+    name: Check mergeability and increment version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      # Make sure that PR has latest changes from main before incrementing version and tagging PR
+      - name: main branch has no changes since last synced to PR branch
+        run: |
+          count=$(git rev-list --count ..origin/main)
+          if [ "$count" -gt 0 ]; then
+              echo "main has $count commits that ${{ github.event.pull_request.head.ref }} branch does not have"
+              exit 1
+          fi
+          
+      - name: Update version
+        run: |
+          # https://api.github.com/users/github-actions%5Bbot%5D
+          # https://github.com/orgs/community/discussions/26560#discussioncomment-3531273
+          git config user.name github-actions
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+          PACKAGE_FILE="package.json"
+          VERSION=$(jq -r '.version' "$PACKAGE_FILE")
+          OLD_VERSION="$VERSION"
+          MAJOR=$(echo "$VERSION" | cut -d '.' -f 1)
+          MINOR=$(echo "$VERSION" | cut -d '.' -f 2)
+          CURRENT_YEAR=$(date +'%Y')
+          CURRENT_MONTH=$(date +'%-m')
+          if [ "$MAJOR" != "$CURRENT_YEAR" ] || [ "$MINOR" != "$CURRENT_MONTH" ]; then
+            npm version "$CURRENT_YEAR.$CURRENT_MONTH.0"
+            echo "Version updated from $OLD_VERSION to $VERSION"
+          else
+            npm version patch
+          fi
+          git push && git push --tags
