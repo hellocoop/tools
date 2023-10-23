@@ -19,9 +19,6 @@ on:
         required: true
         type: string
 
-env:
-  GH_TOKEN: ${{ github.token }}
-
 jobs:
   # GitHub-Slack app sends a workflow status message with live updates to #code-* channel
   sync:
