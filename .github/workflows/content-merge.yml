@@ -9,12 +9,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Get latest changes from main
-        run: |
-          git fetch origin
-          git checkout origin/$GITHUB_HEAD_REF
-          git pull origin main --rebase
+        run: git pull origin main --rebase
 
       - name: Install modules and cache
         uses: actions/setup-node@v3
