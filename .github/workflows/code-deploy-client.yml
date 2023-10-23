@@ -18,6 +18,9 @@ on:
       DOMAIN:
         required: true
         type: string
+      BUILD_DIR:
+        required: true
+        type: string
 
 jobs:
   # GitHub-Slack app sends a workflow status message with live updates to #code-* channel
@@ -88,7 +91,7 @@ jobs:
 
       - name: Create versioned copies of root files for rollback and cp to S3        
         run: |
-          cd ./S3
+          cd ${{inputs.BUILD_DIR}}
           for file in *; do
             if [ -f "$file" ]; then
               aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/ 
