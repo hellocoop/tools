@@ -9,6 +9,9 @@ on:
       TARGET:
         required: true
         type: string
+      DOMAIN:
+        required: true
+        type: string
       NODE_ENV:
         required: true
         type: string
