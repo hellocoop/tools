@@ -12,9 +12,12 @@ on:
       NODE_ENV:
         required: true
         type: string
+      VAULT:
+        required: true
+        type: string
       VAULT_CMD:
-          required: true
-          type: string
+        required: true
+        type: string
       HELLO_SVR:
         required: true
         type: string
@@ -68,7 +71,7 @@ jobs:
           fi
 
       - name: Get vault.json
-        run: ${{ inputs.VAULT_CMD }}
+        run: echo "${{ inputs.VAULT }}" | ${{inputs.VAULT_CMD}}
 
       - name: Set GIT_COMMIT to ENV
         run: |
