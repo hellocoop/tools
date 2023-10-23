@@ -53,6 +53,15 @@ jobs:
           VERSION=$(jq -r '.version' "$PACKAGE_FILE")
           echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
 
+      - name: Check repo version vs staged version
+        if: ${{ inputs.TARGET }} == 'main'
+        run: |
+          STAGE_VERSION=curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r'
+          if [ $STAGE_VERSION == $HELLO_VERSION ]; then
+            echo "$HELLO_VERSION has already been staged."
+            exit 1
+          fi
+
       - name: Install modules and cache
         uses: actions/setup-node@v3
         with:
