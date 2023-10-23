@@ -15,6 +15,9 @@ on:
       TARGET:
         required: true
         type: string
+      DOMAIN:
+        required: true
+        type: string
 
 env:
   GH_TOKEN: ${{ github.token }}
