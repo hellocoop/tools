@@ -102,7 +102,7 @@ jobs:
           done
 
       - name: Copy S3 assets to S3 bucket with the AWS CLI
-        run: aws s3 cp --metadata version=${HELLO_VERSION} S3/assets s3://${BUCKET_NAME}/assets --recursive 
+        run: aws s3 cp --metadata version=${HELLO_VERSION} ${{inputs.BUILD_DIR}}/assets s3://${BUCKET_NAME}/assets --recursive 
 
       - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
