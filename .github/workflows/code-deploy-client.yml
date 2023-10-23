@@ -59,10 +59,10 @@ jobs:
       - name: Check repo version vs staged version
         if: ${{ inputs.TARGET }} == 'main'
         run: |
-          STAGE_VERSION=curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r'
-          echo 'HELLO_VERSION=$HELLO_VERSION'
-          echo 'STAGE_VERSION=$STAGE_VERSION'
-          if [ $STAGE_VERSION == $HELLO_VERSION ]; then
+          STAGE_VERSION=$(curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r')
+          echo "HELLO_VERSION: $HELLO_VERSION"
+          echo "STAGE_VERSION: $STAGE_VERSION"
+          if [ $STAGE_VERSION = $HELLO_VERSION ]; then
             echo "$HELLO_VERSION has already been staged."
             exit 1
           fi
@@ -95,7 +95,7 @@ jobs:
           for file in *; do
             if [ -f "$file" ]; then
               aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/ 
-              if [ ${{ inputs.TARGET }} == 'main' ]; then
+              if [ "${{ inputs.TARGET }}" = "main" ]; then
                 aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/${HELLO_VERSION}/${file}
               fi
             fi
