@@ -60,6 +60,8 @@ jobs:
         if: ${{ inputs.TARGET }} == 'main'
         run: |
           STAGE_VERSION=curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r'
+          echo 'HELLO_VERSION=$HELLO_VERSION'
+          echo 'STAGE_VERSION=$STAGE_VERSION'
           if [ $STAGE_VERSION == $HELLO_VERSION ]; then
             echo "$HELLO_VERSION has already been staged."
             exit 1
