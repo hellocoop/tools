@@ -13,6 +13,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
+          
+      - name: Set Git identity
+        run: |
+          git config --local user.name "GitHub Action"
+          git config --local user.email "github-action@hello.coop"
 
       - name: Get latest changes from main
         run: git pull origin main --rebase
