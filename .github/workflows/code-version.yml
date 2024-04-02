@@ -18,11 +18,11 @@ jobs:
       # Make sure that PR has latest changes from main before incrementing version and tagging PR
       - name: main branch has no changes since last synced to PR branch
         run: |
-          count=$(git rev-list --count ..origin/main)
-          if [ "$count" -gt 0 ]; then
-              echo "main has $count commits that ${{ github.event.pull_request.head.ref }} branch does not have"
-              exit 1
-          fi
+          # https://stackoverflow.com/a/76151412/9747630
+          # https://github.com/orgs/community/discussions/54825#discussioncomment-7579053
+          if ! git merge-base --is-ancestor origin/main ${{ github.event.pull_request.head.sha }};
+          then echo "This branch is not up to date with main";
+          exit 1; fi
           
       - name: Update version
         run: |
