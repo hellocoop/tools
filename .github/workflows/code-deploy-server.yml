@@ -63,7 +63,7 @@ jobs:
           echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Check repo version vs staged version
-        if: ${{ inputs.TARGET }} == 'main'
+        if: ${{ github.event.inputs.TARGET == 'main' }}
         run: |
           STAGE_VERSION=$(curl -s https://${{inputs.domain}}/api/v1/version | jq -r '.VERSION')
           echo "HELLO_VERSION: $HELLO_VERSION"
