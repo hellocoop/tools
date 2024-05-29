@@ -56,11 +56,8 @@ jobs:
           VERSION=$(jq -r '.version' "$PACKAGE_FILE")
           echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Debug TARGET
-        run: echo "TARGET is ${{ inputs.TARGET }}"
-
       - name: Check repo version vs staged version
-        if: ${{ inputs.TARGET }} == 'main'
+        if: ${{ github.event.inputs.TARGET == 'main' }}
         run: |
           STAGE_VERSION=$(curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r')
           echo "HELLO_VERSION: $HELLO_VERSION"
