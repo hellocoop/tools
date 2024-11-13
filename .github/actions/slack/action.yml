@@ -1,0 +1,50 @@
+name: Notify Slack
+inputs:
+    CHANNEL_ID: 
+      requires: true
+      type: string
+    MESSAGE:
+      required: true
+      type: string
+runs:
+  using: "composite"
+  steps:
+    - uses: slackapi/slack-github-action@v1.27.0
+      with:
+        channel-id: ${{ inputs.CHANNEL_ID }}
+        payload: |
+          {
+            "unfurl_links": false,
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ${{ inputs.MESSAGE }}
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch*\n<https://github.com/${{ github.repository }}/tree/${{ github.event.pull_request.head.ref }}|${{ github.repository }}@${{ github.event.pull_request.head.ref }}>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Author*\n<https://github.com/${{ github.event.pull_request.user.login }}|${{ github.event.pull_request.user.login }}>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*PR*\n<https://github.com/${{ github.repository }}/pull/${{ github.event.number }}|${{ github.event.pull_request.title }}>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Build Logs*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
