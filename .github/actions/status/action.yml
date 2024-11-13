@@ -24,6 +24,7 @@ runs:
     - uses: actions/checkout@v4
       with:
         ref: ${{ github.head_ref }}
+        clean: false
     - name: Update commit status
       shell: bash
       run: |
