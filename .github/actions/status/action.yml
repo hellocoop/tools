@@ -25,6 +25,7 @@ runs:
       with:
         ref: ${{ github.head_ref }}
     - name: Update commit status
+      shell: bash
       run: |
         COMMIT_HASH=$(git rev-parse HEAD)
         curl -L \
