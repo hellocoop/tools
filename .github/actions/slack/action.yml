@@ -1,55 +1,287 @@
-name: Notify Slack
+name: PR Checks
 
-inputs:
-    CHANNEL_ID: 
-      requires: true
-      type: string
-    MESSAGE:
-      required: true
-      type: string
-    SLACK_BOT_TOKEN:
-      required: true
-      type: string
+on:
+  pull_request:
+    branches:
+      - main
 
-runs:
-  using: "composite"
-  steps:
-    - uses: slackapi/slack-github-action@v1.27.0
-      with:
-        channel-id: ${{ inputs.CHANNEL_ID }}
-        payload: |
-          {
-            "unfurl_links": false,
-            "blocks": [
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "${{ inputs.MESSAGE }}"
-                }
-              },
-              {
-                "type": "section",
-                "fields": [
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Branch*\n<https://github.com/${{ github.repository }}/tree/${{ github.event.pull_request.head.ref }}|${{ github.repository }}@${{ github.event.pull_request.head.ref }}>"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Author*\n<https://github.com/${{ github.event.pull_request.user.login }}|${{ github.event.pull_request.user.login }}>"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*PR*\n<https://github.com/${{ github.repository }}/pull/${{ github.event.number }}|${{ github.event.pull_request.title }}>"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Build Logs*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
-                  }
-                ]
-              }
-            ]
-          }
-      env:
-        SLACK_BOT_TOKEN: ${{ inputs.SLACK_BOT_TOKEN }}
+env:
+  SLACK_CHANNEL_ID: 'C080605BRN2' #channel name
+
+jobs:
+  check_staging:
+    name: Check staging
+    runs-on: ubuntu-latest
+    permissions: 
+      pull-requests: write
+      statuses: write
+    steps:
+      - name: Check staging is live
+        id: check_staging
+        uses: jtalk/url-health-check-action@v4
+        with:
+          url: https://wallet.hello-staging.net/api/v1/health_check/gh-action
+      - name: Notify Slack
+        uses: hellocoop/tools/.github/actions/slack@main
+        if: failure()
+        with:
+          CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
+          MESSAGE: ":melting_face: *Workflow Failed / Merging Disabled*\\nPlease make sure <https://wallet.hello-staging.net/|Wallet Staging> is live before creating a PR"
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@v3
+        if: failure()
+        with:
+          message: |
+            :melting_face: **Workflow Failed / Merging Disabled**
+            Please make sure [Wallet Staging](https://wallet.hello-staging.net/) is live before creating a PR
+      - name: Block merge
+        uses: hellocoop/tools/.github/actions/status@main
+        if: failure()
+        with:
+          CONTEXT: 'notify_ready'
+          STATE: 'failure'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  sync_main:
+    name: Sync with main
+    runs-on: ubuntu-latest
+    needs: check_staging
+    if: success()
+    permissions: 
+      pull-requests: write
+      contents: write
+      statuses: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup github-actions bot git identity
+        uses: qoomon/actions--setup-git@v1
+        with:
+          user: bot
+      - name: Merge main into PR
+        id: sync_main
+        run: |
+          git fetch origin main
+          git checkout ${{ github.head_ref }}
+          git merge origin/main --no-edit
+          git push origin ${{ github.head_ref }}
+      - name: Notify Slack
+        uses: hellocoop/tools/.github/actions/slack@main
+        if: failure()
+        with:
+          CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
+          MESSAGE: ":melting_face: *Workflow Failed / Merging Disabled*\\nPulling latest changes from main failed possibly due to merge conflicts\\nPlease resolve them locally and try again"
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@v3
+        if: failure()
+        with:
+          message: |
+            :melting_face: **Workflow Failed / Merging Disabled**
+            Pulling latest changes from main failed possibly due to merge conflicts
+            Please resolve them locally and try again
+      - name: Block merge
+        uses: hellocoop/tools/.github/actions/status@main
+        if: failure()
+        with:
+          CONTEXT: 'notify_ready'
+          STATE: 'failure'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test_ui:
+    name: Playwright UI tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: sync_main
+    if: success()
+    permissions: 
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run Playwright tests
+        run: cd web && npm run test
+      - name: Notify Slack
+        uses: hellocoop/tools/.github/actions/slack@main
+        if: failure()
+        with:
+          CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
+          MESSAGE: ":melting_face: *Workflow Failed / Merging Disabled*\\nOne or more UI tests failed\\nPlease resolve them locally and try again"
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@v3
+        if: failure()
+        with:
+          message: |
+            :melting_face: **Workflow Failed / Merging Disabled**
+            One or more UI tests failed
+            Please resolve them locally and try again
+      - name: Block merge
+        uses: hellocoop/tools/.github/actions/status@main
+        if: failure()
+        with:
+          CONTEXT: 'notify_ready'
+          STATE: 'failure'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # test_api:
+  #   name: Fastify API tests
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 60
+  #   needs: sync_main
+  #   if: success()
+  #   permissions: 
+  #     pull-requests: write
+  #     statuses: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #     - name: Install dependencies
+  #       run: npm ci
+  #     - name: Install Playwright Browsers
+  #       run: npx playwright install --with-deps
+  #     - name: Run Playwright tests
+  #       run: npx playwright test
+  #     - name: Notify Slack
+  #       uses: hellocoop/tools/.github/actions/slack@main
+  #       if: failure()
+  #       with:
+  #         CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
+  #         MESSAGE: ":melting_face: *Workflow Failed / Merging Disabled*\\nOne or more UI tests failed\\nPlease resolve them locally and try again"
+  #         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  #     - name: Comment PR
+  #       uses: thollander/actions-comment-pull-request@v3
+  #       if: failure()
+  #       with:
+  #         message: |
+  #           :melting_face: **Workflow Failed / Merging Disabled**
+  #           One or more UI tests failed
+  #           Please resolve them locally and try again
+  #     - name: Block merge
+  #       uses: hellocoop/tools/.github/actions/status@main
+  #       if: failure()
+  #       with:
+  #         CONTEXT: 'notify_ready'
+  #         STATE: 'failure'
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # test_e2e:
+  #   name: Playwright E2E tests
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 60
+  #   needs: sync_main
+  #   if: success()
+  #   permissions: 
+  #     pull-requests: write
+  #     statuses: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #     - name: Install dependencies
+  #       run: npm ci
+  #     - name: Install Playwright Browsers
+  #       run: npx playwright install --with-deps
+  #     - name: Run Playwright tests
+  #       run: npx playwright test
+  #     - name: Notify Slack
+  #       uses: hellocoop/tools/.github/actions/slack@main
+  #       if: failure()
+  #       with:
+  #         CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
+  #         MESSAGE: ":melting_face: *Workflow Failed / Merging Disabled*\\nOne or more UI tests failed\\nPlease resolve them locally and try again"
+  #         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  #     - name: Comment PR
+  #       uses: thollander/actions-comment-pull-request@v3
+  #       if: failure()
+  #       with:
+  #         message: |
+  #           :melting_face: **Workflow Failed / Merging Disabled**
+  #           One or more UI tests failed
+  #           Please resolve them locally and try again
+  #     - name: Block merge
+  #       uses: hellocoop/tools/.github/actions/status@main
+  #       if: failure()
+  #       with:
+  #         CONTEXT: 'notify_ready'
+  #         STATE: 'failure'
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  bump_version:
+    name: Bump version
+    runs-on: ubuntu-latest
+    needs: test_ui
+    # needs: [test_ui, test_api, test_e2e]
+    if: success()
+    permissions: 
+      pull-requests: write
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+      - name: Setup github-actions bot git identity
+        uses: qoomon/actions--setup-git@v1
+        with:
+          user: bot
+      - name: Bump version
+        id: version
+        run: |
+          PACKAGE_FILE="package.json"
+          VERSION=$(jq -r '.version' "$PACKAGE_FILE")
+          OLD_VERSION="$VERSION"
+          MAJOR=$(echo "$VERSION" | cut -d '.' -f 1)
+          MINOR=$(echo "$VERSION" | cut -d '.' -f 2)
+          CURRENT_YEAR=$(date +'%Y')
+          CURRENT_MONTH=$(date +'%-m')
+          if [ "$MAJOR" != "$CURRENT_YEAR" ] || [ "$MINOR" != "$CURRENT_MONTH" ]; then
+            npm version "$CURRENT_YEAR.$CURRENT_MONTH.0" -m "Bump version"
+            echo "Version updated from $OLD_VERSION to $VERSION"
+          else
+            npm version patch -m "Bump version"
+          fi
+          VERSION=$(jq -r '.version' "$PACKAGE_FILE")  # Get updated version
+          echo "Version after update: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          git push && git push --tags
+    
+  notify_ready:
+    name: Notify PR ready
+    runs-on: ubuntu-latest
+    needs: bump_version
+    if: success()
+    permissions: 
+      pull-requests: write
+      statuses: write
+    steps:
+      - name: Notify Slack
+        uses: hellocoop/tools/.github/actions/slack@main
+        with:
+          CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
+          MESSAGE: ":checkered_flag: *Workflow Completed Successfully / Merging Enabled*\\nv${{ needs.bump_version.outputs.VERSION }} is ready to be merged and deployed to staging"
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@v3
+        env: 
+          VERSION: ${{ needs.bump_version.outputs.VERSION }}
+        with:
+          message: |
+            :checkered_flag: **Workflow Completed Successfully / Merging Enabled**
+            v${{ env.VERSION }} is ready to be merged and deployed to staging
+      - name: Enable merge
+        uses: hellocoop/tools/.github/actions/status@main
+        with:
+          CONTEXT: 'notify_ready'
+          STATE: 'success'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
