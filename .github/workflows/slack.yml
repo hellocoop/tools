@@ -15,7 +15,8 @@ on:
 jobs:
   runs-on: ubuntu-latest
   steps:
-    - uses: slackapi/slack-github-action@v1.27.0
+    - name: Send slack message
+      uses: slackapi/slack-github-action@v1.27.0
       with:
         channel-id: ${{ inputs.CHANNEL_ID }}
         payload: |
