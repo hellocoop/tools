@@ -1,4 +1,5 @@
 name: Notify Slack
+
 inputs:
     CHANNEL_ID: 
       requires: true
@@ -6,6 +7,10 @@ inputs:
     MESSAGE:
       required: true
       type: string
+    SLACK_BOT_TOKEN:
+      required: true
+      type: string
+
 runs:
   using: "composite"
   steps:
@@ -47,4 +52,4 @@ runs:
             ]
           }
       env:
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_BOT_TOKEN: ${{ inputs.SLACK_BOT_TOKEN }}
