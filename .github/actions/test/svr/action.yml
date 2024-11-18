@@ -1,0 +1,21 @@
+name: Fastify API Tests
+
+inputs:
+  VAULT_JS_B64:
+    required: true
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+          cache-dependency-path: './svr/package-lock.json'
+    - name: Install dependencies
+      run: cd svr && npm ci
+    - name: Get vault
+      run:  echo "${{ inputs.VAULT_JS_B64 }}" | base64 --decode > svr/vault.js
+    - name: Run Fastify API tests
+      run: npm run test:svr:ci
