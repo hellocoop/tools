@@ -18,7 +18,10 @@ runs:
         cache-dependency-path: './svr/package-lock.json'
     - name: Install dependencies
       run: cd svr && npm ci
+      shell: bash
     - name: Get vault
       run:  echo "${{ inputs.VAULT_JS_B64 }}" | base64 --decode > svr/vault.js
+      shell: bash
     - name: Run Fastify API tests
       run: npm run test:svr:ci
+      shell: bash

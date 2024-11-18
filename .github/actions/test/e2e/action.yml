@@ -21,9 +21,13 @@ runs:
           ./svr/package-lock.json
     - name: Install dependencies
       run: npm i
+      shell: bash
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
+      shell: bash
     - name: Get vault
       run:  echo "${{ inputs.VAULT_JS_B64 }}" | base64 --decode > svr/vault.js
+      shell: bash
     - name: Run Playwright E2E tests
       run: npm run test:e2e
+      shell: bash

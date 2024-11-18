@@ -10,9 +10,6 @@ inputs:
 
 runs:
   using: "composite"
-  defaults:
-    run:
-      shell: bash
   steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
@@ -21,7 +18,10 @@ runs:
         cache-dependency-path: './client/package-lock.json'
     - name: Install dependencies
       run: cd client && npm ci
+      shell: bash
     - name: Install Playwright Browsers
       run: cd client && npx playwright install --with-deps chromium
+      shell: bash
     - name: Run Playwright UI tests
       run: npm run test:web -- -- --shard=${{ inputs.SHARD_INDEX }}/${{ inputs.SHARD_TOTAL }}
+      shell: bash
