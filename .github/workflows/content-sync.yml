@@ -55,12 +55,33 @@ jobs:
       - name: Build content
         run: npm run build
 
-      - name: Copy S3 dir to S3 bucket with the AWS CLI
+      - name: Fetch S3 bucket name
+        id: fetch-bucket-name
         run: |
-          BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)
-          aws s3 sync S3/ s3://${BUCKET_NAME}/
+          echo "BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)" >> $GITHUB_ENV
+
+      - name: Tag all files in remote S3 to be deleted
+        run: |
+          aws s3api list-objects-v2 --bucket $BUCKET_NAME --query 'Contents[].Key' --output text | while read -r KEY; do
+            aws s3api put-object-tagging --bucket $BUCKET_NAME --key "$KEY" --tagging 'TagSet=[{Key=Delete,Value=True}]'
+          done
+
+      - name: Copy local S3 dir to remote S3 bucket with the AWS CLI
+        run: aws s3 sync S3/ s3://$BUCKET_NAME/
+
+      - name: Copy localStorage.html and 404.html from CDN to remote S3 bucket
+        if: ${{ env.BUCKET_NAME != 'cdn-hello-coop' }} # Skip copy if workflow run from CDN repo
+        run: |
+          aws s3 cp s3://cdn-hello-coop/html/localStorage.html s3://$BUCKET_NAME/localStorage.html
+          aws s3 cp s3://cdn-hello-coop/html/404.html s3://$BUCKET_NAME/404.html
+
+      - name: Delete all tagged files in remote S3 bucket
+        run: |
+          aws s3api list-objects-v2 --bucket $BUCKET_NAME --query 'Contents[?contains(Tags[?Key==`Delete`].Value, `True`)].Key' --output text | while read -r KEY; do
+            aws s3api delete-object --bucket $BUCKET_NAME --key "$KEY"
+          done
 
       - name: Invalidate CloudFront cache
         run: |
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
-          aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
