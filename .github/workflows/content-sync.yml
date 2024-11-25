@@ -57,8 +57,7 @@ jobs:
 
       - name: Fetch S3 bucket name
         id: fetch-bucket-name
-        run: |
-          echo "BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)" >> $GITHUB_ENV
+        run: echo "BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)" >> $GITHUB_ENV
 
       - name: Tag all files in remote S3 to be deleted
         run: |
@@ -71,8 +70,7 @@ jobs:
 
       - name: Copy localStorage.html from CDN to remote S3 bucket
         if: ${{ env.BUCKET_NAME != 'cdn-hello-coop' }}
-        run: |
-          aws s3 cp s3://cdn-hello-coop/html/localStorage.html s3://$BUCKET_NAME/localStorage.html
+        run: aws s3 cp s3://cdn-hello-coop/html/localStorage.html s3://$BUCKET_NAME/localStorage.html
 
       - name: Delete all tagged files in remote S3 bucket
         run: |
