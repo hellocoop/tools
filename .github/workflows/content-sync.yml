@@ -83,4 +83,4 @@ jobs:
       - name: Invalidate CloudFront cache
         run: |
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
-          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+          aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
