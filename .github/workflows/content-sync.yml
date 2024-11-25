@@ -69,7 +69,7 @@ jobs:
         run: aws s3 sync S3/ s3://$BUCKET_NAME/
 
       - name: Copy localStorage.html from CDN to remote S3 bucket
-        if: ${{ env.BUCKET_NAME != 'cdn-hello-coop' }}
+        if: ${{ env.BUCKET_NAME != 'cdn-hello-coop' }} # Skip copy if workflow run from CDN repo
         run: aws s3 cp s3://cdn-hello-coop/html/localStorage.html s3://$BUCKET_NAME/localStorage.html
 
       - name: Delete all tagged files in remote S3 bucket
