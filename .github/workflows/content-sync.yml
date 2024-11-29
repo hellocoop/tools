@@ -55,11 +55,8 @@ jobs:
       - name: Build content
         run: npm run build
 
-      - name: Get repo name
-        run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
-
       - name: Pull down common files
-        if: ${{ env.REPO_NAME != 'CDN' }} # should be able to update common CDN files
+        if: ${{ github.repository != 'hellocoop/CDN' }} # should be able to update common CDN files
         run: |
           curl -o S3/${{ vars.COMMON_FILE_1 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_1 }}
           curl -o S3/${{ vars.COMMON_FILE_2 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_2 }}
