@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        
+
       - name: Build role name
-        run: echo $GITHUB_REPOSITORY
+        run: |
+          echo $GITHUB_REPOSITORY
+          echo ${{ github.repository }}
