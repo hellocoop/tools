@@ -1,0 +1,16 @@
+name: Sync content with S3
+
+on:
+  workflow_call:
+
+jobs:
+  sync:
+    name: Upload to Amazon S3
+    runs-on: ubuntu-latest
+   
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Build role name
+        run: echo $GITHUB_REPOSITORY
