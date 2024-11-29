@@ -15,4 +15,5 @@ jobs:
       - name: Build role name
         run: |
           echo $GITHUB_REPOSITORY
+          echo ${GITHUB_REPOSITORY##*/}
           echo ${{ github.repository }}
