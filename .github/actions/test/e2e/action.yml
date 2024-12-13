@@ -32,7 +32,6 @@ runs:
         path: |
           ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
-      shell: bash
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
       if: steps.playwright-e2e-cache.outputs.cache-hit != 'true'
