@@ -20,8 +20,22 @@ runs:
     - name: Install dependencies
       run: npm i
       shell: bash
+    - name: Get installed Playwright version
+      id: playwright-version
+      run: |
+        echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').dependencies['@playwright/test'].version)")" >> $GITHUB_ENV
+      shell: bash
+    - name: Cache playwright binaries
+      uses: actions/cache@v4
+      id: playwright-e2e-cache
+      with:
+        path: |
+          ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+      shell: bash
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
+      if: steps.playwright-e2e-cache.outputs.cache-hit != 'true'
       shell: bash
     - name: Get vault
       run:  echo "${{ inputs.VAULT_JS_B64 }}" | base64 --decode > svr/vault.js
