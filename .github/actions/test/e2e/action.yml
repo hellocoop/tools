@@ -19,7 +19,7 @@ runs:
           ./svr/package-lock.json
           ./client/package-lock.json
     - name: Install dependencies
-      run: npm i
+      run: npm ci
       shell: bash
     - name: Get installed Playwright version
       id: playwright-version

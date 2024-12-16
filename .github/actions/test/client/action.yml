@@ -22,7 +22,7 @@ runs:
           ./svr/package-lock.json
           ./client/package-lock.json
     - name: Install dependencies
-      run: cd client && npm ci
+      run: npm ci
       shell: bash
     - name: Get installed Playwright version
       id: playwright-version
@@ -35,7 +35,7 @@ runs:
         path: ~/.cache/ms-playwright
         key: playwright-${{ env.PLAYWRIGHT_VERSION }}
     - name: Install Playwright Browsers
-      run: cd client && npx playwright install --with-deps chromium
+      run: npx playwright install --with-deps chromium
       shell: bash
       if: steps.playwright-cache.outputs.cache-hit != 'true'
     - name: Run Playwright UI tests
