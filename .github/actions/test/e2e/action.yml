@@ -13,28 +13,28 @@ runs:
       with:
         node-version: '18'
         cache: 'npm'
+        # use/create cache key generated from hash of below files
         cache-dependency-path: |
           ./package-lock.json
-          ./client/package-lock.json
           ./svr/package-lock.json
+          ./client/package-lock.json
     - name: Install dependencies
       run: npm i
       shell: bash
-    # TBD Cache playwright deps
-    # - name: Get installed Playwright version
-    #   id: playwright-version
-    #   run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').packages['node_modules/@playwright/test'].version)")" >> $GITHUB_ENV
-    #   shell: bash
-    # - name: Cache playwright binaries
-    #   uses: actions/cache@v4
-    #   id: playwright-cache
-    #   with:
-    #     path: ~/.cache/playwright
-    #     key: playwright-${{ env.PLAYWRIGHT_VERSION }}
+    - name: Get installed Playwright version
+      id: playwright-version
+      run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').packages['node_modules/@playwright/test'].version)")" >> $GITHUB_ENV
+      shell: bash
+    - name: Cache playwright binaries
+      uses: actions/cache@v4
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ env.PLAYWRIGHT_VERSION }}
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
       shell: bash
-      # if: steps.playwright-cache.outputs.cache-hit != 'true'
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
     - name: Get vault
       run:  echo "${{ inputs.VAULT_JS_B64 }}" | base64 --decode > svr/vault.js
       shell: bash
