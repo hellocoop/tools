@@ -34,7 +34,7 @@ runs:
         path: ~/.cache/ms-playwright
         key: playwright-${{ env.PLAYWRIGHT_VERSION }}
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps chromium
+      run: cd client && npx playwright install --with-deps chromium
       shell: bash
       if: steps.playwright-cache.outputs.cache-hit != 'true'
     - name: Run Playwright UI tests
