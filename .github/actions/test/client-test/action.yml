@@ -16,12 +16,8 @@ runs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: |
-          ./package-lock.json
-          ./svr/package-lock.json
-          ./client/package-lock.json
     - name: Install dependencies
-      run: npm ci
+      run: cd client && npm ci
       shell: bash
     # - name: Install Playwright Browsers
     #   run: cd client && npx playwright install --with-deps chromium
