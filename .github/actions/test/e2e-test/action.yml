@@ -13,7 +13,8 @@ runs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: | # use/create cache key generated from hash of below files
+        # use/create cache key generated from hash of below files
+        cache-dependency-path: |
           ./package-lock.json
           ./svr/package-lock.json
           ./client/package-lock.json

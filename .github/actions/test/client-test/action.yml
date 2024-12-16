@@ -16,12 +16,13 @@ runs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: | # use/create cache key generated from hash of below files
+        # use/create cache key generated from hash of below files
+        cache-dependency-path: |
           ./package-lock.json
           ./svr/package-lock.json
           ./client/package-lock.json
     - name: Install dependencies
-      run: cd client && npm ci
+      run: npm ci
       shell: bash
     - name: Get installed Playwright version
       id: playwright-version
@@ -34,9 +35,9 @@ runs:
         path: ~/.cache/ms-playwright
         key: playwright-${{ env.PLAYWRIGHT_VERSION }}
     - name: Install Playwright Browsers
-      run: cd client && npx playwright install --with-deps chromium
+      run: npx playwright install --with-deps chromium
       shell: bash
       if: steps.playwright-cache.outputs.cache-hit != 'true'
     - name: Run Playwright UI tests
-      run: npm run test:web
+      run: npm run test:web -- -- --shard=${{ inputs.SHARD_INDEX }}/${{ inputs.SHARD_TOTAL }}
       shell: bash
