@@ -17,7 +17,7 @@ runs:
         path: ./svr/node_modules
         key: ${{ runner.os }}-svr-node-modules-${{ hashFiles('svr/package-lock.json') }}
     
-    - name: Install dependencies
+    - name: Install server dependencies
       if: steps.server-node-modules-cache.outputs.cache-hit != 'true'
       run: cd svr && npm ci
       shell: bash

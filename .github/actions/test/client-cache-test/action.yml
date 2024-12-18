@@ -20,9 +20,22 @@ runs:
         path: ./client/node_modules
         key: ${{ runner.os }}-client-node-modules-${{ hashFiles('client/package-lock.json') }}
 
-    - name: Install dependencies
+    - name: Install client dependencies
       if: steps.client-node-modules-cache.outputs.cache-hit != 'true'
       run: cd client && npm ci
+      shell: bash
+
+    # playwright is a dependency added to root package.json
+    - name: Restore root node_modules
+      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      id: root-node-modules-cache
+      with:
+        path: ./node_modules
+        key: ${{ runner.os }}-root-node-modules-${{ hashFiles('package-lock.json') }}
+
+    - name: Install root dependencies
+      if: steps.root-node-modules-cache.outputs.cache-hit != 'true'
+      run: npm ci
       shell: bash
 
     - name: Get installed Playwright version
