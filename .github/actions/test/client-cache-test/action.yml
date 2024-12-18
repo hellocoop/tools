@@ -46,6 +46,7 @@ runs:
     # Just install packages at root, skips postinstall scripts with --ignore-scripts flag
     - run: npm ci --ignore-scripts
       if: steps.root-node-modules-cache.outputs.cache-hit != 'true'
+      shell: bash
 
     - name: Get installed Playwright version
       id: playwright-version
