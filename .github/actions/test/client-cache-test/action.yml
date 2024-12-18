@@ -36,12 +36,11 @@ runs:
       shell: bash
 
     - name: Cache node_modules
-      uses: actions/cache@v3
+      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
       id: root-node-modules-cache
       with:
         path: node_modules
         key: ${{ runner.os }}-root-node-modules-${{ env.HASH }}
-        lookup-only: true # does not restore cache
       
     # Just install packages at root, skips postinstall scripts with --ignore-scripts flag
     - run: npm ci --ignore-scripts
