@@ -33,6 +33,7 @@ runs:
         HASH=$(jq 'del(.version) | del(.packages[""].version)' package-lock.json | sha256sum | awk '{ print $1 }')
         echo "Computed Hash: $HASH"
         echo "HASH=$HASH" >> $GITHUB_ENV
+      shell: bash
 
     - name: Cache node_modules
       uses: actions/cache@v3
