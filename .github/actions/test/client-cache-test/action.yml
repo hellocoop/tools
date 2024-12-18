@@ -25,7 +25,7 @@ runs:
       run: cd client && npm ci
       shell: bash
 
-    # playwright is a dependency added to root package.json
+    # install root packages -- playwright is a dependency added to root package.json
     # Remove "version" from the root and "" package block, then compute SHA256 hash
     # Because we bump root package.json and dont want to lose existing valid caches
     - name: Compute hash after modifying package-lock.json
@@ -42,8 +42,7 @@ runs:
         path: node_modules
         key: ${{ runner.os }}-root-node-modules-${{ env.HASH }}
       
-    # Just install packages at root, skips postinstall scripts with --ignore-scripts flag
-    - run: npm ci --ignore-scripts
+    - run: npm ci --ignore-scripts # Just install packages at root, skips postinstall scripts with --ignore-scripts flag
       if: steps.root-node-modules-cache.outputs.cache-hit != 'true'
       shell: bash
 
