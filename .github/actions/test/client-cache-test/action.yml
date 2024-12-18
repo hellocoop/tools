@@ -53,6 +53,7 @@ runs:
     - name: Install Playwright Browsers
       if: steps.playwright-cache.outputs.cache-hit != 'true'
       run: npx playwright install --with-deps chromium
+      shell: bash
 
     - name: Run Playwright UI tests
       run: npm run test:web -- -- --shard=${{ inputs.SHARD_INDEX }}/${{ inputs.SHARD_TOTAL }}
