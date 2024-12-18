@@ -1,0 +1,64 @@
+name: Playwright E2E Tests
+
+inputs:
+  VAULT_JS_B64:
+    required: true
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+
+    - name: Restore client node_modules
+      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      id: client-node-modules-cache
+      with:
+        path: ./client/node_modules
+        key: ${{ runner.os }}-client-node-modules-${{ hashFiles('client/package-lock.json') }}
+
+    - name: Install client dependencies
+      if: steps.client-node-modules-cache.outputs.cache-hit != 'true'
+      run: cd client && npm ci
+      shell: bash
+
+    # playwright is a dependency added to root package.json
+    # Remove "version" from the root and "" package block, then compute SHA256 hash
+    # Because we bump root package.json and dont want to lose existing valid caches
+    - name: Compute hash after modifying package-lock.json
+      run: |
+        HASH=$(jq 'del(.version) | del(.packages[""].version)' package-lock.json | sha256sum | awk '{ print $1 }')
+        echo "Computed Hash: $HASH"
+        echo "HASH=$HASH" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Cache node_modules
+      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      id: root-node-modules-cache
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-root-node-modules-${{ env.HASH }}
+      
+    # Just install packages at root, skips postinstall scripts with --ignore-scripts flag
+    - run: npm ci --ignore-scripts
+      if: steps.root-node-modules-cache.outputs.cache-hit != 'true'
+      shell: bash
+
+    - name: Restore server node_modules
+      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      id: server-node-modules-cache
+      with:
+        path: ./svr/node_modules
+        key: ${{ runner.os }}-svr-node-modules-${{ hashFiles('svr/package-lock.json') }}
+    
+    - name: Install server dependencies
+      if: steps.server-node-modules-cache.outputs.cache-hit != 'true'
+      run: cd svr && npm ci
+      shell: bash
+
+    - name: Get vault
+      run:  echo "${{ inputs.VAULT_JS_B64 }}" | base64 --decode > svr/vault.js
+      shell: bash
+    - name: Run Playwright E2E tests
+      run: npm run test:e2e
+      shell: bash
