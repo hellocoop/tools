@@ -25,29 +25,6 @@ runs:
       run: cd client && npm ci
       shell: bash
 
-    # playwright is a dependency added to root package.json
-    # Remove "version" from the root and "" package block, then compute SHA256 hash
-    # Because we bump root package.json and dont want to lose existing valid caches
-    - name: Compute hash after modifying package-lock.json
-      run: |
-        HASH=$(jq 'del(.version) | del(.packages[""].version)' package-lock.json | sha256sum | awk '{ print $1 }')
-        echo "Computed Hash: $HASH"
-        echo "HASH=$HASH" >> $GITHUB_ENV
-      shell: bash
-
-    - name: Cache node_modules
-      uses: actions/cache@v3
-      id: root-node-modules-cache
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-root-node-modules-${{ env.HASH }}
-        lookup-only: true # does not restore cache
-      
-    # Just install packages at root, skips postinstall scripts with --ignore-scripts flag
-    - run: npm ci --ignore-scripts
-      if: steps.root-node-modules-cache.outputs.cache-hit != 'true'
-      shell: bash
-
     - name: Get installed Playwright version
       id: playwright-version
       run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').packages['node_modules/@playwright/test'].version)")" >> $GITHUB_ENV
