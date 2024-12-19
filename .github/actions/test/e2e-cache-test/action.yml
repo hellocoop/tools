@@ -17,7 +17,7 @@ runs:
       id: client-node-modules-cache
       with:
         path: ./client/node_modules
-        key: ${{ runner.os }}-client-node-modules-${{ hashFiles('client/package-lock.json') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-client-node-modules-${{ hashFiles('client/package-lock.json') }}
 
     - name: Install client dependencies
       if: steps.client-node-modules-cache.outputs.cache-hit != 'true'
@@ -40,7 +40,7 @@ runs:
       id: root-node-modules-cache
       with:
         path: node_modules
-        key: ${{ runner.os }}-root-node-modules-${{ env.HASH }}
+        key: ${{ runner.os }}-${{ runner.arch }}-root-node-modules-${{ env.HASH }}
       
     - name: Install root dependencies
       run: npm ci --ignore-scripts # Just install packages at root, skips postinstall scripts with --ignore-scripts flag
@@ -54,7 +54,7 @@ runs:
       id: server-node-modules-cache
       with:
         path: ./svr/node_modules
-        key: ${{ runner.os }}-svr-node-modules-${{ hashFiles('svr/package-lock.json') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-svr-node-modules-${{ hashFiles('svr/package-lock.json') }}
     
     - name: Install server dependencies
       if: steps.server-node-modules-cache.outputs.cache-hit != 'true'
@@ -73,7 +73,7 @@ runs:
       id: playwright-cache 
       with:
         path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+        key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
 
     - name: Install Playwright Browsers
       if: steps.playwright-cache.outputs.cache-hit != 'true'
