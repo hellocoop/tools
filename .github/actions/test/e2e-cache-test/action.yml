@@ -111,10 +111,12 @@ runs:
     - name: Load Docker image from cache
       if: steps.cache-dynamodb-image.outputs.cache-hit == 'true'
       run: docker load < ./dynamodb-docker-image.tar
+      shell: bash
 
     - name: Pull Docker image
       if: steps.cache-dynamodb-image.outputs.cache-hit != 'true'
       run: docker pull amazon/dynamodb-local
+      shell: bash
 
     # Docker nginx image ------------------------
 
@@ -128,10 +130,12 @@ runs:
     - name: Load Docker image from cache
       if: steps.cache-nginx-image.outputs.cache-hit == 'true'
       run: docker load < ./nginx-docker-image.tar
+      shell: bash
 
     - name: Pull Docker image
       if: steps.cache-nginx-image.outputs.cache-hit != 'true'
       run: docker pull nginx:alpine
+      shell: bash
 
     # Test suite run --------------------------------
 
