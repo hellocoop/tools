@@ -13,7 +13,7 @@ runs:
   steps:
     - uses: actions/checkout@v4
 
-    # Client
+    # Client npm dependencies -----------------------
 
     - name: Restore client node_modules
       uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
@@ -27,7 +27,7 @@ runs:
       run: cd client && npm ci
       shell: bash
 
-    # Root
+    # Root npm dependencies ------------------------
 
     # playwright is a dependency added to root package.json
     # Remove "version" from the root and "" package block, then compute SHA256 hash
@@ -50,7 +50,7 @@ runs:
       if: steps.root-node-modules-cache.outputs.cache-hit != 'true'
       shell: bash
 
-    # Playwright
+    # Playwright -----------------------------------
 
     - name: Get installed Playwright version
       id: playwright-version
@@ -68,6 +68,8 @@ runs:
       if: steps.playwright-cache.outputs.cache-hit != 'true'
       run: npx playwright install --with-deps chromium
       shell: bash
+
+    # Test suite run --------------------------------
 
     - name: Run Playwright UI tests
       run: npm run test:web -- -- --shard=${{ inputs.SHARD_INDEX }}/${{ inputs.SHARD_TOTAL }}
