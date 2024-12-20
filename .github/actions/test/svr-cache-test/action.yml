@@ -27,11 +27,11 @@ runs:
     # Docker node image ----------------------------
 
     - name: Cache Node.js Docker Image
-        id: cache-node-image
-        uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
-        with:
-          path: ./node-docker-image.tar
-          key: ${{ runner.os }}-${{ runner.arch }}-docker-node-18-alpine    
+      id: cache-node-image
+      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      with:
+        path: ./node-docker-image.tar
+        key: ${{ runner.os }}-${{ runner.arch }}-docker-node-18-alpine    
 
     - name: Load Docker image from cache
       if: steps.cache-node-image.outputs.cache-hit == 'true'
