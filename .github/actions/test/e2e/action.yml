@@ -1,3 +1,7 @@
+# Uses actions/cache/restore which only restores cache / does not create one
+# Caches are saved with cache.yml that runs in the main branch
+# Only caches in the main branch are accessible in dev branches
+
 name: Playwright E2E Tests
 
 inputs:
@@ -10,10 +14,10 @@ runs:
   steps:
     - uses: actions/checkout@v4
 
-    # Client
+    # Client npm dependencies -----------------------
 
     - name: Restore client node_modules
-      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      uses: actions/cache/restore@v4
       id: client-node-modules-cache
       with:
         path: ./client/node_modules
@@ -24,7 +28,7 @@ runs:
       run: cd client && npm ci
       shell: bash
 
-    # Root
+    # Root npm dependencies ------------------------
 
     # Remove "version" from the root and "" package block, then compute SHA256 hash
     # Because we bump root package.json and dont want to lose existing valid caches
@@ -36,7 +40,7 @@ runs:
       shell: bash
 
     - name: Restore root node_modules
-      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      uses: actions/cache/restore@v4
       id: root-node-modules-cache
       with:
         path: node_modules
@@ -47,7 +51,7 @@ runs:
       if: steps.root-node-modules-cache.outputs.cache-hit != 'true'
       shell: bash
 
-    # Server
+    # Server npm dependencies ----------------------
 
     - name: Restore server node_modules
       uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
@@ -61,7 +65,7 @@ runs:
       run: cd svr && npm ci
       shell: bash
 
-    # Playwright
+    # Playwright -----------------------------------
     
     - name: Get installed Playwright version
       id: playwright-version
@@ -69,7 +73,7 @@ runs:
       shell: bash
 
     - name: Restore Playwright binaries
-      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      uses: actions/cache/restore@v4
       id: playwright-cache 
       with:
         path: ~/.cache/ms-playwright
@@ -79,6 +83,65 @@ runs:
       if: steps.playwright-cache.outputs.cache-hit != 'true'
       run: npx playwright install --with-deps chromium
       shell: bash
+
+    # Docker node image ----------------------------
+
+    - name: Cache Node.js Docker Image
+      id: cache-node-image
+      uses: actions/cache/restore@v4
+      with:
+        path: ./node-docker-image.tar
+        key: ${{ runner.os }}-${{ runner.arch }}-docker-node-18-alpine    
+
+    - name: Load Docker image from cache
+      if: steps.cache-node-image.outputs.cache-hit == 'true'
+      run: docker load < ./node-docker-image.tar
+      shell: bash
+
+    - name: Pull Docker image
+      if: steps.cache-node-image.outputs.cache-hit != 'true'
+      run: docker pull node:18-alpine
+      shell: bash
+
+    # Docker dynamodb image ------------------------
+
+    - name: Cache DynamoDB Docker Image
+      id: cache-dynamodb-image
+      uses: actions/cache/restore@v4
+      with:
+        path: ./dynamodb-docker-image.tar
+        key: ${{ runner.os }}-${{ runner.arch }}-docker-amazon-dynamodb-local
+
+    - name: Load Docker image from cache
+      if: steps.cache-dynamodb-image.outputs.cache-hit == 'true'
+      run: docker load < ./dynamodb-docker-image.tar
+      shell: bash
+
+    - name: Pull Docker image
+      if: steps.cache-dynamodb-image.outputs.cache-hit != 'true'
+      run: docker pull amazon/dynamodb-local
+      shell: bash
+
+    # Docker nginx image ------------------------
+
+    - name: Cache Nginx Docker Image
+      id: cache-nginx-image
+      uses: actions/cache/restore@v4
+      with:
+        path: ./nginx-docker-image.tar
+        key: ${{ runner.os }}-${{ runner.arch }}-docker-nginx-alpine
+
+    - name: Load Docker image from cache
+      if: steps.cache-nginx-image.outputs.cache-hit == 'true'
+      run: docker load < ./nginx-docker-image.tar
+      shell: bash
+
+    - name: Pull Docker image
+      if: steps.cache-nginx-image.outputs.cache-hit != 'true'
+      run: docker pull nginx:alpine
+      shell: bash
+
+    # Test suite run --------------------------------
 
     - name: Get vault
       run:  echo "${{ inputs.VAULT_JS_B64 }}" | base64 --decode > svr/vault.js
