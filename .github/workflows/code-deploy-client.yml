@@ -102,14 +102,6 @@ jobs:
             fi
           done
 
-      - name: Pull down common files and upload to S3
-        if: ${{ github.repository != 'hellocoop/CDN' }} # should be able to update common CDN files
-        run: |
-          curl -o ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_1 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_1 }}
-          curl -o ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_2 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_2 }}
-          aws s3 cp ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_1 }} s3://${BUCKET_NAME}/
-          aws s3 cp ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_2 }} s3://${BUCKET_NAME}/
-
       - name: Copy S3 assets to S3 bucket with the AWS CLI
         run: aws s3 cp --metadata version=${HELLO_VERSION} ${{inputs.BUILD_DIR}}/assets s3://${BUCKET_NAME}/assets --recursive 
 
