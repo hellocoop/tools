@@ -95,8 +95,8 @@ jobs:
           for file in *; do
             if [ -f "$file" ]; then
               aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/ 
-              # only create versioned files for staging - skip for beta
-              if [ "${{ inputs.TARGET }}" = "main" ]; then
+              # dont create version files when deploying to beta
+              if [ "${{ inputs.TARGET }}" != "beta" ]; then
                 aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/${HELLO_VERSION}/${file}
               fi
             fi
@@ -107,6 +107,8 @@ jobs:
         run: |
           curl -o ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_1 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_1 }}
           curl -o ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_2 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_2 }}
+          aws s3 cp ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_1 }} s3://${BUCKET_NAME}/
+          aws s3 cp ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_2 }} s3://${BUCKET_NAME}/
 
       - name: Copy S3 assets to S3 bucket with the AWS CLI
         run: aws s3 cp --metadata version=${HELLO_VERSION} ${{inputs.BUILD_DIR}}/assets s3://${BUCKET_NAME}/assets --recursive 
