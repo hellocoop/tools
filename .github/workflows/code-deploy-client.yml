@@ -102,7 +102,7 @@ jobs:
             fi
           done
 
-      - name: Pull down common files
+      - name: Pull down common files and upload to S3
         if: ${{ github.repository != 'hellocoop/CDN' }} # should be able to update common CDN files
         run: |
           curl -o ${{inputs.BUILD_DIR}}/${{ vars.COMMON_FILE_1 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_1 }}
