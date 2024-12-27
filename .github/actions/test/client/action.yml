@@ -1,13 +1,5 @@
 name: Playwright UI Tests
 
-inputs:
-  SHARD_INDEX:
-    required: true
-    type: string
-  SHARD_TOTAL:
-    required: true
-    type: string
-
 runs:
   using: "composite"
   steps:
@@ -72,5 +64,5 @@ runs:
     # Test suite run --------------------------------
 
     - name: Run Playwright UI tests
-      run: npm run test:web -- -- --shard=${{ inputs.SHARD_INDEX }}/${{ inputs.SHARD_TOTAL }}
+      run: npm run test:web
       shell: bash
