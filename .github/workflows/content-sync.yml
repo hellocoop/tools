@@ -55,12 +55,6 @@ jobs:
       - name: Build content
         run: npm run build
 
-      - name: Pull down common files
-        if: ${{ github.repository != 'hellocoop/CDN' }} # should be able to update common CDN files
-        run: |
-          curl -o S3/${{ vars.COMMON_FILE_1 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_1 }}
-          curl -o S3/${{ vars.COMMON_FILE_2 }} https://cdn.hello.coop/${{ vars.COMMON_FILE_2 }}
-
       - name: Copy S3 dir to S3 bucket with the AWS CLI
         run: |
           BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)
