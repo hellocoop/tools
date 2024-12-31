@@ -1,3 +1,7 @@
+# Uses actions/cache/restore which only restores cache / does not create one
+# Caches are saved with cache.yml that runs in the main branch
+# Only caches in the main branch are accessible in dev branches
+
 name: Playwright UI Tests
 
 runs:
@@ -8,7 +12,7 @@ runs:
     # Client npm dependencies -----------------------
 
     - name: Restore client node_modules
-      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      uses: actions/cache/restore@v4
       id: client-node-modules-cache
       with:
         path: ./client/node_modules
@@ -32,7 +36,7 @@ runs:
       shell: bash
 
     - name: Cache node_modules
-      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      uses: actions/cache/restore@v4
       id: root-node-modules-cache
       with:
         path: node_modules
@@ -50,7 +54,7 @@ runs:
       shell: bash
 
     - name: Restore Playwright binaries
-      uses: actions/cache/restore@v4 # only restores / does not save cache -- we do that separately in cache.yml
+      uses: actions/cache/restore@v4
       id: playwright-cache 
       with:
         path: ~/.cache/ms-playwright
