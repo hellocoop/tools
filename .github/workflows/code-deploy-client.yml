@@ -9,7 +9,7 @@ on:
       STACK:
         required: true
         type: string
-      BUILD_CMD:
+      WORKING_DIR:
         required: true
         type: string
       TARGET:
@@ -57,7 +57,7 @@ jobs:
           echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Check repo version vs staged version
-        if: ${{ github.event.inputs.TARGET == 'main' }}
+        if: ${{ inputs.TARGET == 'main' }}
         run: |
           STAGE_VERSION=$(curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r')
           echo "HELLO_VERSION: $HELLO_VERSION"
@@ -67,17 +67,21 @@ jobs:
             exit 1
           fi
 
-      - name: Install modules and cache
-        uses: actions/setup-node@v4
+      # Restore npm dependencies -----------------------
+      - name: Restore client node_modules
+        uses: actions/cache/restore@v4
+        id: client-node-modules-cache
         with:
-          node-version: '18'
-          cache: 'npm'
+          path: ./${{ inputs.WORKING_DIR }}/node_modules
+          key: ${{ runner.os }}-${{ runner.arch }}-client-node-modules-${{ hashFiles(format('{0}/package-lock.json', inputs.WORKING_DIR)) }}
 
-      - name: Restore npm cache
-        run: npm ci
+      - name: Install client dependencies
+        if: steps.client-node-modules-cache.outputs.cache-hit != 'true'
+        run: cd ${{ inputs.WORKING_DIR }} && npm ci
+      # ------------------------------------------------
 
       - name: Build content
-        run: ${{ inputs.BUILD_CMD }}
+        run: cd ${{ inputs.WORKING_DIR }} && npm run build
 
       - name: Get bucket and distribution_id 
         run: |
