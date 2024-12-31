@@ -9,6 +9,9 @@ on:
       STACK:
         required: true
         type: string
+      INSTALL_CMD:
+        required: true
+        type: string
       BUILD_CMD:
         required: true
         type: string
@@ -20,6 +23,12 @@ on:
         type: string
       BUILD_DIR:
         required: true
+        type: string
+      CACHE_KEY:
+        required: false
+        type: string
+      CACHE_PATH:
+        required: false
         type: string
 
 jobs:
@@ -67,14 +76,18 @@ jobs:
             exit 1
           fi
 
-      - name: Install modules and cache
-        uses: actions/setup-node@v4
+      # Restore npm dependencies -----------------------
+      - name: Restore client node_modules
+        uses: actions/cache/restore@v4
+        id: client-node-modules-cache
         with:
-          node-version: '18'
-          cache: 'npm'
+          path: ${{ inputs.CACHE_PATH }}
+          key: ${{ inputs.CACHE_KEY }}
 
-      - name: Restore npm cache
-        run: npm ci
+      - name: Install client dependencies
+        if: steps.client-node-modules-cache.outputs.cache-hit != 'true'
+        run: ${{ inputs.INSTALL_CMD }}
+      # ------------------------------------------------
 
       - name: Build content
         run: ${{ inputs.BUILD_CMD }}
