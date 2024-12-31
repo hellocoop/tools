@@ -73,7 +73,7 @@ jobs:
         id: client-node-modules-cache
         with:
           path: ./${{ inputs.WORKING_DIR }}/node_modules
-          key: ${{ runner.os }}-${{ runner.arch }}-client-node-modules-${{ hashFiles('client/package-lock.json') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-client-node-modules-${{ hashFiles(inputs.WORKING_DIR + '/package-lock.json') }}
 
       - name: Check cache hit
         run: |
