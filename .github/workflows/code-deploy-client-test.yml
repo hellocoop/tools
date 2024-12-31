@@ -75,13 +75,17 @@ jobs:
           path: ./${{ inputs.WORKING_DIR }}/node_modules
           key: ${{ runner.os }}-${{ runner.arch }}-client-node-modules-${{ hashFiles('${{ inputs.WORKING_DIR }}/package-lock.json') }}
 
+      - name: Check cache hit
+        run: |
+          echo "Client node_modules cache hit: ${{ steps.client-node-modules-cache.outputs.cache-hit }}"
+
       - name: Install client dependencies
         if: steps.client-node-modules-cache.outputs.cache-hit != 'true'
         run: cd ${{ inputs.WORKING_DIR }} && npm ci
       # ------------------------------------------------
 
-      - name: Build content
-        run: cd ${{ inputs.WORKING_DIR }} && npm run build
+      # - name: Build content
+      #   run: cd ${{ inputs.WORKING_DIR }} && npm run build
 
       # - name: Get bucket and distribution_id 
       #   run: |
