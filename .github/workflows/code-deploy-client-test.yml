@@ -1,0 +1,113 @@
+name: Sync content with S3 Staging/Beta
+
+on:
+  workflow_call:
+    inputs:
+      AWS_ACCOUNT:
+        required: true
+        type: string
+      STACK:
+        required: true
+        type: string
+      WORKING_DIR:
+        required: true
+        type: string
+      TARGET:
+        required: true
+        type: string
+      DOMAIN:
+        required: true
+        type: string
+      BUILD_DIR:
+        required: true
+        type: string
+
+jobs:
+  # GitHub-Slack app sends a workflow status message with live updates to #code-* channel
+  sync:
+    name: Upload to Amazon S3
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Build role name
+        run: |
+          # Use shell string manipulation to extract the repository name
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          ROLE_NAME="arn:aws:iam::${{ inputs.AWS_ACCOUNT }}:role/${REPO_NAME}-repo"
+          # Set the environment variable for future steps
+          echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
+
+      - name: Configure web-sync AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ env.ROLE_NAME }} 
+          aws-region: us-west-2
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.TARGET }}
+
+      - name: Get HELLO_VERSION
+        run: |
+          PACKAGE_FILE="package.json"
+          VERSION=$(jq -r '.version' "$PACKAGE_FILE")
+          echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Check repo version vs staged version
+        if: ${{ github.event.inputs.TARGET == 'main' }}
+        run: |
+          STAGE_VERSION=$(curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r')
+          echo "HELLO_VERSION: $HELLO_VERSION"
+          echo "STAGE_VERSION: $STAGE_VERSION"
+          if [ $STAGE_VERSION = $HELLO_VERSION ]; then
+            echo "$HELLO_VERSION has already been staged."
+            exit 1
+          fi
+
+      # Restore npm dependencies -----------------------
+      - name: Restore client node_modules
+        uses: actions/cache/restore@v4
+        id: client-node-modules-cache
+        with:
+          path: ./${{ inputs.WORKING_DIR }}/node_modules
+          key: ${{ runner.os }}-${{ runner.arch }}-client-node-modules-${{ hashFiles('${{ inputs.WORKING_DIR }}/package-lock.json') }}
+
+      - name: Install client dependencies
+        if: steps.client-node-modules-cache.outputs.cache-hit != 'true'
+        run: cd ${{ inputs.WORKING_DIR }} && npm ci
+      # ------------------------------------------------
+
+      - name: Build content
+        run: cd ${{ inputs.WORKING_DIR }} && npm run build
+
+      - name: Get bucket and distribution_id 
+        run: |
+          BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
+          echo "BUCKET_NAME=${BUCKET_NAME}" >> $GITHUB_ENV
+          echo "DISTRIBUTION_ID=${DISTRIBUTION_ID}" >> $GITHUB_ENV        
+
+      - name: Cleanup S3 bucket
+        run: aws s3 rm s3://${BUCKET_NAME} --recursive
+
+      - name: Create versioned copies of root files for rollback and cp to S3        
+        run: |
+          cd ${{inputs.BUILD_DIR}}
+          for file in *; do
+            if [ -f "$file" ]; then
+              aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/ 
+              # dont create version files when deploying to beta
+              if [ "${{ inputs.TARGET }}" != "beta" ]; then
+                aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/${HELLO_VERSION}/${file}
+              fi
+            fi
+          done
+
+      - name: Copy S3 assets to S3 bucket with the AWS CLI
+        run: aws s3 cp --metadata version=${HELLO_VERSION} ${{inputs.BUILD_DIR}}/assets s3://${BUCKET_NAME}/assets --recursive 
+
+      - name: Invalidate CloudFront cache
+        run: aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
