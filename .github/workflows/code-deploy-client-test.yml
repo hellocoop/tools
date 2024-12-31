@@ -57,7 +57,7 @@ jobs:
           echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Check repo version vs staged version
-        if: ${{ github.event.inputs.TARGET == 'main' }}
+        if: ${{ inputs.TARGET == 'main' }}
         run: |
           STAGE_VERSION=$(curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r')
           echo "HELLO_VERSION: $HELLO_VERSION"
@@ -83,31 +83,31 @@ jobs:
       - name: Build content
         run: cd ${{ inputs.WORKING_DIR }} && npm run build
 
-      - name: Get bucket and distribution_id 
-        run: |
-          BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)
-          DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
-          echo "BUCKET_NAME=${BUCKET_NAME}" >> $GITHUB_ENV
-          echo "DISTRIBUTION_ID=${DISTRIBUTION_ID}" >> $GITHUB_ENV        
+      # - name: Get bucket and distribution_id 
+      #   run: |
+      #     BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)
+      #     DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
+      #     echo "BUCKET_NAME=${BUCKET_NAME}" >> $GITHUB_ENV
+      #     echo "DISTRIBUTION_ID=${DISTRIBUTION_ID}" >> $GITHUB_ENV        
 
-      - name: Cleanup S3 bucket
-        run: aws s3 rm s3://${BUCKET_NAME} --recursive
+      # - name: Cleanup S3 bucket
+      #   run: aws s3 rm s3://${BUCKET_NAME} --recursive
 
-      - name: Create versioned copies of root files for rollback and cp to S3        
-        run: |
-          cd ${{inputs.BUILD_DIR}}
-          for file in *; do
-            if [ -f "$file" ]; then
-              aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/ 
-              # dont create version files when deploying to beta
-              if [ "${{ inputs.TARGET }}" != "beta" ]; then
-                aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/${HELLO_VERSION}/${file}
-              fi
-            fi
-          done
+      # - name: Create versioned copies of root files for rollback and cp to S3        
+      #   run: |
+      #     cd ${{inputs.BUILD_DIR}}
+      #     for file in *; do
+      #       if [ -f "$file" ]; then
+      #         aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/ 
+      #         # dont create version files when deploying to beta
+      #         if [ "${{ inputs.TARGET }}" != "beta" ]; then
+      #           aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/${HELLO_VERSION}/${file}
+      #         fi
+      #       fi
+      #     done
 
-      - name: Copy S3 assets to S3 bucket with the AWS CLI
-        run: aws s3 cp --metadata version=${HELLO_VERSION} ${{inputs.BUILD_DIR}}/assets s3://${BUCKET_NAME}/assets --recursive 
+      # - name: Copy S3 assets to S3 bucket with the AWS CLI
+      #   run: aws s3 cp --metadata version=${HELLO_VERSION} ${{inputs.BUILD_DIR}}/assets s3://${BUCKET_NAME}/assets --recursive 
 
-      - name: Invalidate CloudFront cache
-        run: aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
+      # - name: Invalidate CloudFront cache
+      #   run: aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
