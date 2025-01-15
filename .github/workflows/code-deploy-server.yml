@@ -28,7 +28,7 @@ on:
 jobs:
   # GitHub-Slack app sends a workflow status message with live updates to #code-* channel
   stage:
-    runs-on: ubuntu-latest
+    runs-on: ARM64
     permissions:
       id-token: write
       contents: read
