@@ -1,0 +1,132 @@
+name: Stage/Beta server
+
+on:
+  workflow_call:
+    secrets:
+      VAULT:
+        required: true
+    inputs:
+      AWS_ACCOUNT:
+        required: true
+        type: string
+      TARGET:
+        required: true
+        type: string
+      DOMAIN:
+        required: true
+        type: string
+      NODE_ENV:
+        required: true
+        type: string
+      VAULT_CMD:
+        required: true
+        type: string
+      HELLO_SVR:
+        required: true
+        type: string
+      
+jobs:
+  # GitHub-Slack app sends a workflow status message with live updates to #code-* channel
+  stage:
+    runs-on: hello_arm # Large Runner that we may for by the minute that is ARM-based
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Build role name
+        run: |
+          # Use shell string manipulation to extract the repository name
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          ROLE_NAME="arn:aws:iam::${{inputs.AWS_ACCOUNT}}:role/${REPO_NAME}-repo"
+          # Set the environment variable for future steps
+          echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
+
+      - name: Configure web-sync AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ env.ROLE_NAME }} 
+          aws-region: us-west-2
+
+      - name: Login to Docker
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{inputs.AWS_ACCOUNT}}.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.TARGET }}
+
+      - name: Get HELLO_VERSION
+        run: |
+          PACKAGE_FILE="package.json"
+          VERSION=$(jq -r '.version' "$PACKAGE_FILE")
+          echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Check repo version vs staged version
+        if: ${{ github.event.inputs.TARGET == 'main' }}
+        run: |
+          STAGE_VERSION=$(curl -s https://${{inputs.domain}}/api/v1/version | jq -r '.VERSION')
+          echo "HELLO_VERSION: $HELLO_VERSION"
+          echo "STAGE_VERSION: $STAGE_VERSION"
+          if [ $STAGE_VERSION = $HELLO_VERSION ]; then
+            echo "$HELLO_VERSION has already been staged."
+            exit 1
+          fi
+
+      - name: Get vault.json
+        run: echo "${{ secrets.VAULT }}" | ${{inputs.VAULT_CMD}}
+
+      - name: Set GIT_COMMIT to ENV
+        run: |
+          GIT_SHA_SHORT=$(git rev-parse --short ${{ github.sha }})
+          # Set the environment variable for future steps
+          echo "GIT_COMMIT=${GIT_SHA_SHORT}" >> $GITHUB_ENV
+
+      # necessary if we need to invalidate logo distribution
+      # if used, give Admin-repo role cloudformation:DescribeStacks permission
+      # - name: Get Logo Distribution ID
+      #   run: |
+      #     LOGO_DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name LogosCoopStack --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
+      #     echo "LOGO_DISTRIBUTION_ID=${LOGO_DISTRIBUTION_ID}" >> $GITHUB_ENV
+
+      - uses: docker/setup-buildx-action@v2 #needed for caching
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: svr
+          push: false
+          load: true
+          tags: "hello-${{inputs.HELLO_SVR}}-arm:latest"
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            HELLO_VERSION=${{ env.HELLO_VERSION }}
+            GIT_COMMIT=${{ env.GIT_COMMIT }}
+            # LOGO_DISTRIBUTION_ID=${{ env.LOGO_DISTRIBUTION_ID }}
+      
+      - name: Tag Docker images
+        run: |
+          docker tag hello-${{inputs.HELLO_SVR}}-arm:latest ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}
+          docker tag hello-${{inputs.HELLO_SVR}}-arm:latest ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${GIT_COMMIT}
+          docker tag hello-${{inputs.HELLO_SVR}}-arm:latest ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:latest
+        
+      - name: Push Docker image to ECR
+        run: |
+          docker push ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}
+          docker push ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${GIT_COMMIT}
+          docker push ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:latest
+
+    #   - name: Update task definition
+    #     run: |
+    #       echo updating ${{inputs.NODE_ENV}} taskDefinition.image to ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}
+    #       echo reading current task definition
+    #       aws ecs describe-task-definition --task-definition=${{inputs.HELLO_SVR}}-arm |
+    #       jq --arg image "${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}" '
+    #           .taskDefinition | 
+    #           {containerDefinitions, family, taskRoleArn, executionRoleArn, networkMode, cpu, memory} |
+    #           .containerDefinitions[0].image = $image' > "updated.${{inputs.HELLO_SVR}}-arm.taskdefinition.json"
+          
+    #       echo updating task definition
+    #       aws ecs register-task-definition --cli-input-json "file://updated.${{inputs.HELLO_SVR}}-arm.taskdefinition.json"
+    #       echo updating service
+    #       aws ecs update-service --cluster ${{inputs.HELLO_SVR}}-arm --service ${{inputs.HELLO_SVR}}-arm --task-definition ${{inputs.HELLO_SVR}}-arm
