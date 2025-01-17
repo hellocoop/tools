@@ -26,7 +26,7 @@ jobs:
   # GitHub-Slack app sends a workflow status message with live updates to #code-* channel
   sync:
     name: Upload to Amazon S3
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       id-token: write
       contents: read
