@@ -125,17 +125,17 @@ jobs:
           docker push ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${GIT_COMMIT}
           docker push ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:latest
 
-    #   - name: Update task definition
-    #     run: |
-    #       echo updating ${{inputs.NODE_ENV}} taskDefinition.image to ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}
-    #       echo reading current task definition
-    #       aws ecs describe-task-definition --task-definition=${{inputs.HELLO_SVR}}-arm |
-    #       jq --arg image "${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}" '
-    #           .taskDefinition | 
-    #           {containerDefinitions, family, taskRoleArn, executionRoleArn, networkMode, cpu, memory} |
-    #           .containerDefinitions[0].image = $image' > "updated.${{inputs.HELLO_SVR}}-arm.taskdefinition.json"
+      - name: Update task definition
+        run: |
+          echo updating ${{inputs.NODE_ENV}} taskDefinition.image to ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}
+          echo reading current task definition
+          aws ecs describe-task-definition --task-definition=${{inputs.HELLO_SVR}}-arm |
+          jq --arg image "${{inputs.AWS_ACCOUNT}}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}" '
+              .taskDefinition | 
+              {containerDefinitions, family, taskRoleArn, executionRoleArn, networkMode, cpu, memory} |
+              .containerDefinitions[0].image = $image' > "updated.${{inputs.HELLO_SVR}}-arm.taskdefinition.json"
           
-    #       echo updating task definition
-    #       aws ecs register-task-definition --cli-input-json "file://updated.${{inputs.HELLO_SVR}}-arm.taskdefinition.json"
-    #       echo updating service
-    #       aws ecs update-service --cluster ${{inputs.HELLO_SVR}}-arm --service ${{inputs.HELLO_SVR}}-arm --task-definition ${{inputs.HELLO_SVR}}-arm
+          echo updating task definition
+          aws ecs register-task-definition --cli-input-json "file://updated.${{inputs.HELLO_SVR}}-arm.taskdefinition.json"
+          echo updating service
+          aws ecs update-service --cluster ${{inputs.HELLO_SVR}}-arm --service ${{inputs.HELLO_SVR}}-arm --task-definition ${{inputs.HELLO_SVR}}-arm
