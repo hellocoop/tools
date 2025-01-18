@@ -1,0 +1,113 @@
+name: Stage/Beta server
+
+on:
+  workflow_call:
+    secrets:
+      VAULT:
+        required: true
+    inputs:
+      AWS_ACCOUNT:
+        required: true
+        type: string
+      TARGET:
+        required: true
+        type: string
+      DOMAIN:
+        required: true
+        type: string
+      NODE_ENV:
+        required: true
+        type: string
+      VAULT_CMD:
+        required: true
+        type: string
+      HELLO_SVR:
+        required: true
+        type: string
+
+jobs:
+  stage:
+    runs-on: hello_arm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Build role name and set AWS_REGION
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          ROLE_NAME="arn:aws:iam::${{ inputs.AWS_ACCOUNT }}:role/${REPO_NAME}-repo"
+          echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
+          echo "AWS_REGION=us-west-2" >> $GITHUB_ENV
+
+      - name: Debug Environment Variables
+        run: |
+          echo "ROLE_NAME=${{ env.ROLE_NAME }}"
+          echo "AWS_REGION=${{ env.AWS_REGION }}"
+          echo "HELLO_VERSION=${{ env.HELLO_VERSION }}"
+          echo "GIT_COMMIT=${{ env.GIT_COMMIT }}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ env.ROLE_NAME }}
+          aws-region: us-west-2
+
+      - name: Check if ECR Repository Exists
+        run: |
+          if aws ecr describe-repositories --repository-names hello-${{ inputs.HELLO_SVR }}-arm > /dev/null 2>&1; then
+            echo "Repository exists."
+          else
+            echo "Repository does not exist. Exiting."
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.TARGET }}
+
+      - name: Get HELLO_VERSION
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Debug HELLO_VERSION
+        run: echo "HELLO_VERSION=${{ env.HELLO_VERSION }}"
+
+      - name: Set GIT_COMMIT to ENV
+        run: |
+          GIT_SHA_SHORT=$(git rev-parse --short ${{ github.sha }})
+          echo "GIT_COMMIT=${GIT_SHA_SHORT}" >> $GITHUB_ENV
+
+      - name: Login to Docker
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+
+      - name: Verify AWS Role
+        run: aws sts get-caller-identity
+
+      - name: Clear Docker Cache
+        run: docker builder prune --all --force
+
+      - uses: docker/setup-buildx-action@v2
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: svr
+          push: true
+          tags: |
+            ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:prod
+            ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.HELLO_VERSION }}
+            ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.GIT_COMMIT }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            HELLO_VERSION=${{ env.HELLO_VERSION }}
+            GIT_COMMIT=${{ env.GIT_COMMIT }}
+
+      - name: Restart ECS Service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ inputs.HELLO_SVR }}-arm \
+            --service ${{ inputs.HELLO_SVR }}-arm \
+            --force-new-deployment
