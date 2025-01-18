@@ -28,7 +28,7 @@ on:
 jobs:
   # GitHub-Slack app sends a workflow status message with live updates to #code-* channel
   stage:
-    runs-on: hello_arm # Large Runner that we may for by the minute that is ARM-based
+    runs-on: hello_arm # Large Runner that we pay for by the minute that is ARM-based
     permissions:
       id-token: write
       contents: read
