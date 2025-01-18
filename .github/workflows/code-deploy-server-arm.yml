@@ -89,6 +89,21 @@ jobs:
       - name: Clear Docker Cache
         run: docker builder prune --all --force
 
+      - name: Debug Environment Variables
+        run: |
+          echo "AWS_REGION=${{ env.AWS_REGION }}"
+          echo "HELLO_VERSION=${{ env.HELLO_VERSION }}"
+          echo "GIT_COMMIT=${{ env.GIT_COMMIT }}"
+
+      - name: Build Image
+        run: |
+          docker build -t hello-wallet-arm:prod svr
+          docker tag hello-wallet-arm:prod 448617543178.dkr.ecr.us-west-2.amazonaws.com/hello-wallet-arm:prod
+      
+      - name: Push Image to ECR
+        run: |
+          docker push 448617543178.dkr.ecr.us-west-2.amazonaws.com/hello-wallet-arm:prod
+
       - uses: docker/setup-buildx-action@v2
       - name: Build and Push Docker image
         uses: docker/build-push-action@v5
