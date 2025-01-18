@@ -1,4 +1,4 @@
-name: Stage/Beta server
+name: Stage/Beta arm server
 
 on:
   workflow_call:
