@@ -96,8 +96,8 @@ jobs:
           push: true
           tags: |
             ${{inputs.AWS_ACCOUNT}}.dkr.ecr.us-west-2.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:prod
-            ${{inputs.AWS_ACCOUNT}}.dkr.ecr.us-west-2.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${HELLO_VERSION}
-            ${{inputs.AWS_ACCOUNT}}.dkr.ecr.us-west-2.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${GIT_COMMIT}
+            ${{inputs.AWS_ACCOUNT}}.dkr.ecr.us-west-2.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${{HELLO_VERSION}}
+            ${{inputs.AWS_ACCOUNT}}.dkr.ecr.us-west-2.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${{GIT_COMMIT}}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
