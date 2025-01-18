@@ -47,13 +47,12 @@ jobs:
           role-to-assume: ${{ env.ROLE_NAME }} 
           aws-region: us-west-2
 
-      - name: Check if ECR Repository Exists and Create if Missing
+      - name: Check if ECR Repository Exists
         run: |
             if aws ecr describe-repositories --repository-names hello-${{inputs.HELLO_SVR}}-arm > /dev/null 2>&1; then
               echo "Repository hello-${{inputs.HELLO_SVR}}-arm already exists."
             else
-                echo "Repository hello-${{inputs.HELLO_SVR}}-arm does not exist. Creating it now."
-                aws ecr create-repository --repository-name hello-${{inputs.HELLO_SVR}}-arm
+                echo "Repository hello-${{inputs.HELLO_SVR}}-arm does not exist. Exiting."
             fi
 
       - name: Login to Docker
