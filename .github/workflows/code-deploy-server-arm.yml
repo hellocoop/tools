@@ -98,7 +98,7 @@ jobs:
           context: svr
           push: true
           tags: |
-            ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${{env.AWS_REGION}}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:latest
+            ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${{env.AWS_REGION}}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:prod
             ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${{env.AWS_REGION}}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${{env.HELLO_VERSION}}
             ${{inputs.AWS_ACCOUNT}}.dkr.ecr.${{env.AWS_REGION}}.amazonaws.com/hello-${{inputs.HELLO_SVR}}-arm:${{env.GIT_COMMIT}}
           cache-from: type=gha
