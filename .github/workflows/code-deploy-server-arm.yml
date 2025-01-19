@@ -32,19 +32,29 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Build role name and set AWS_REGION
+
+      - name: Check repo version vs staged version
+        if: ${{ github.event.inputs.TARGET == 'main' }}
+        run: |
+          STAGE_VERSION=$(curl -s https://${{inputs.domain}}/api/v1/version | jq -r '.VERSION')
+          echo "HELLO_VERSION: $HELLO_VERSION"
+          echo "STAGE_VERSION: $STAGE_VERSION"
+          if [ $STAGE_VERSION = $HELLO_VERSION ]; then
+            echo "$HELLO_VERSION has already been staged."
+            exit 1
+          fi
+
+      - name: Build ROLE_NAME, IMAGE, ECR, and REPO_ARN
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           ROLE_NAME="arn:aws:iam::${{ inputs.AWS_ACCOUNT }}:role/${REPO_NAME}-repo"
+          IMAGE=hello-${{ inputs.HELLO_SVR }}-arm
+          ECR=${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${AWS_REGION}.amazonaws.com
+          REPO_ARN=${ECR}/${IMAGE}
           echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
-          echo "AWS_REGION=us-west-2" >> $GITHUB_ENV
-
-      - name: Debug Environment Variables
-        run: |
-          echo "ROLE_NAME=${{ env.ROLE_NAME }}"
-          echo "AWS_REGION=${{ env.AWS_REGION }}"
-          echo "HELLO_VERSION=${{ env.HELLO_VERSION }}"
-          echo "GIT_COMMIT=${{ env.GIT_COMMIT }}"
+          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
+          echo "ECR=${ECR}" >> $GITHUB_ENV
+          echo "REPO_ARN=${REPO_ARN}" >> $GITHUB_ENV
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
@@ -54,10 +64,10 @@ jobs:
 
       - name: Check if ECR Repository Exists
         run: |
-          if aws ecr describe-repositories --repository-names hello-${{ inputs.HELLO_SVR }}-arm > /dev/null 2>&1; then
-            echo "Repository exists."
+          if aws ecr describe-repositories --repository-names ${IMAGE} > /dev/null 2>&1; then
+            echo "${IMAGE} Repository exists."
           else
-            echo "Repository does not exist. Exiting."
+            echo "${IMAGE} Repository does not exist. Exiting."
             exit 1
           fi
 
@@ -66,27 +76,12 @@ jobs:
         with:
           ref: ${{ inputs.TARGET }}
 
-      - name: Get HELLO_VERSION
+      - name: Get HELLO_VERSION and GIT_COMMIT
         run: |
           VERSION=$(jq -r '.version' package.json)
-          echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
-
-      - name: Debug HELLO_VERSION
-        run: echo "HELLO_VERSION=${{ env.HELLO_VERSION }}"
-
-      - name: Set GIT_COMMIT to ENV
-        run: |
           GIT_SHA_SHORT=$(git rev-parse --short ${{ github.sha }})
+          echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
           echo "GIT_COMMIT=${GIT_SHA_SHORT}" >> $GITHUB_ENV
-
-      - name: Set Repo Vars
-        run: |
-          IMAGE=hello-${{ inputs.HELLO_SVR }}-arm
-          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
-          ECR=${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${AWS_REGION}.amazonaws.com
-          echo "ECR=${ECR}" >> $GITHUB_ENV
-          REPO_ARN=${ECR}/${IMAGE}
-          echo "REPO_ARN=${REPO_ARN}" >> $GITHUB_ENV
 
       - name: Debug Environment Variables
         run: |
@@ -97,21 +92,14 @@ jobs:
           echo "ECR=${ECR}"
           echo "REPO_ARN=${REPO_ARN}"
 
+      - name: Get vault.json
+        run: echo "${{ secrets.VAULT }}" | ${{inputs.VAULT_CMD}}
+
       - name: Login to Docker
         run: |
           aws ecr get-login-password --region ${AWS_REGION} | \
           docker login --username AWS --password-stdin ${ECR}
   
-  
-      # - name: Build Image
-      #   run: |
-      #     docker build -t hello-wallet-arm:prod svr
-      #     docker tag hello-wallet-arm:prod 448617543178.dkr.ecr.us-west-2.amazonaws.com/hello-wallet-arm:prod
-      
-      # - name: Push Image to ECR
-      #   run: |
-      #     docker push 448617543178.dkr.ecr.us-west-2.amazonaws.com/hello-wallet-arm:prod
-
       - uses: docker/setup-buildx-action@v2
       - name: Build Docker image
         uses: docker/build-push-action@v5
