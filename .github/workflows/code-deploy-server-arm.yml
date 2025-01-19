@@ -127,6 +127,6 @@ jobs:
       - name: Restart ECS Service
         run: |
           aws ecs update-service \
-            --cluster ${{ inputs.HELLO_SVR }}-arm \
-            --service ${{ inputs.HELLO_SVR }}-arm \
+            --cluster ${{ inputs.HELLO_SVR }}-cluster \
+            --service ${{ inputs.HELLO_SVR }}-service \
             --force-new-deployment
