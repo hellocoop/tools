@@ -44,13 +44,15 @@ jobs:
             exit 1
           fi
 
-      - name: Build role name
+      - name: Set ROLE_NAME and IMAGE
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           ROLE_NAME="arn:aws:iam::${{inputs.AWS_ACCOUNT}}:role/${REPO_NAME}-repo"
           echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
-  
+          IMAGE=hello-${{ inputs.HELLO_SVR }}-arm
+          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
 
+  
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
@@ -75,12 +77,10 @@ jobs:
         run: |
           VERSION=$(jq -r '.version' package.json)
           GIT_SHA_SHORT=$(git rev-parse --short ${{ github.sha }})
-          IMAGE=hello-${{ inputs.HELLO_SVR }}-arm
           ECR=${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${AWS_REGION}.amazonaws.com
           REPO_ARN=${ECR}/${IMAGE}
           echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
           echo "GIT_COMMIT=${GIT_SHA_SHORT}" >> $GITHUB_ENV
-          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
           echo "ECR=${ECR}" >> $GITHUB_ENV
           echo "REPO_ARN=${REPO_ARN}" >> $GITHUB_ENV
   
