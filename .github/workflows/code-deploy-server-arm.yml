@@ -79,24 +79,30 @@ jobs:
           GIT_SHA_SHORT=$(git rev-parse --short ${{ github.sha }})
           echo "GIT_COMMIT=${GIT_SHA_SHORT}" >> $GITHUB_ENV
 
-      - name: Login to Docker
+      - name: Set Repo Vars
         run: |
-          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
-
-      - name: Verify AWS Role
-        run: aws sts get-caller-identity
-
-      - name: Clear Docker Cache
-        run: docker builder prune --all --force
+          IMAGE=hello-${{ inputs.HELLO_SVR }}-arm
+          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
+          ECR=${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${AWS_REGION}.amazonaws.com
+          echo "ECR=${ECR}" >> $GITHUB_ENV
+          REPO_ARN=${ECR}/${IMAGE}
+          echo "REPO_ARN=${REPO_ARN}" >> $GITHUB_ENV
 
       - name: Debug Environment Variables
         run: |
-          echo "AWS_REGION=${{ env.AWS_REGION }}"
-          echo "HELLO_VERSION=${{ env.HELLO_VERSION }}"
-          echo "GIT_COMMIT=${{ env.GIT_COMMIT }}"
-          echo "AWS_REGION bare=$AWS_REGION}"
+          echo "AWS_REGION=${AWS_REGION}"
+          echo "HELLO_VERSION=${HELLO_VERSION}"
+          echo "GIT_COMMIT=${GIT_COMMIT}"
+          echo "IMAGE=${IMAGE}"
+          echo "ECR=${ECR}"
+          echo "REPO_ARN=${REPO_ARN}"
 
-
+      - name: Login to Docker
+        run: |
+          aws ecr get-login-password --region ${AWS_REGION} | \
+          docker login --username AWS --password-stdin ${ECR}
+  
+  
       # - name: Build Image
       #   run: |
       #     docker build -t hello-wallet-arm:prod svr
@@ -112,10 +118,7 @@ jobs:
         with:
           context: svr
           push: false # docker/build-push-action@v5 does not work with push to ECR
-          tags: |
-            ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:prod
-            ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.HELLO_VERSION }}
-            ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.GIT_COMMIT }}
+          tags: ${IMAGE}:prod
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -124,11 +127,12 @@ jobs:
       
       - name: Push Image to ECR
         run: |
-          docker push ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:prod
-          docker push ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.HELLO_VERSION }}
-          docker push ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.GIT_COMMIT }}
-
-
+          docker tag ${IMAGE}:prod ${REPO_ARN}:prod
+          docker tag ${IMAGE}:prod ${REPO_ARN}:${HELLO_VERSION}
+          docker tag ${IMAGE}:prod ${REPO_ARN}:${GIT_COMMIT}
+          docker push ${REPO_ARN}:prod
+          docker push ${REPO_ARN}:${HELLO_VERSION}
+          docker push ${REPO_ARN}:${GIT_COMMIT}
 
       - name: Restart ECS Service
         run: |
