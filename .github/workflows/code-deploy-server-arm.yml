@@ -116,7 +116,6 @@ jobs:
             ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:prod
             ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.HELLO_VERSION }}
             ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.GIT_COMMIT }}
-          outputs: type=registry
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
