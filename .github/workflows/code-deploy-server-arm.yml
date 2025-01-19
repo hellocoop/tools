@@ -94,22 +94,24 @@ jobs:
           echo "AWS_REGION=${{ env.AWS_REGION }}"
           echo "HELLO_VERSION=${{ env.HELLO_VERSION }}"
           echo "GIT_COMMIT=${{ env.GIT_COMMIT }}"
+          echo "AWS_REGION bare=$AWS_REGION}"
 
-      - name: Build Image
-        run: |
-          docker build -t hello-wallet-arm:prod svr
-          docker tag hello-wallet-arm:prod 448617543178.dkr.ecr.us-west-2.amazonaws.com/hello-wallet-arm:prod
+
+      # - name: Build Image
+      #   run: |
+      #     docker build -t hello-wallet-arm:prod svr
+      #     docker tag hello-wallet-arm:prod 448617543178.dkr.ecr.us-west-2.amazonaws.com/hello-wallet-arm:prod
       
-      - name: Push Image to ECR
-        run: |
-          docker push 448617543178.dkr.ecr.us-west-2.amazonaws.com/hello-wallet-arm:prod
+      # - name: Push Image to ECR
+      #   run: |
+      #     docker push 448617543178.dkr.ecr.us-west-2.amazonaws.com/hello-wallet-arm:prod
 
       - uses: docker/setup-buildx-action@v2
-      - name: Build and Push Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: svr
-          push: true
+          push: false # docker/build-push-action@v5 does not work with push to ECR
           tags: |
             ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:prod
             ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.HELLO_VERSION }}
@@ -120,6 +122,14 @@ jobs:
           build-args: |
             HELLO_VERSION=${{ env.HELLO_VERSION }}
             GIT_COMMIT=${{ env.GIT_COMMIT }}
+      
+      - name: Push Image to ECR
+        run: |
+          docker push ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:prod
+          docker push ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.HELLO_VERSION }}
+          docker push ${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hello-${{ inputs.HELLO_SVR }}-arm:${{ env.GIT_COMMIT }}
+
+
 
       - name: Restart ECS Service
         run: |
