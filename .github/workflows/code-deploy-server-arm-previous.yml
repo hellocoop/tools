@@ -17,9 +17,6 @@ on:
       DOMAIN:
         required: true
         type: string
-      NODE_ENV:
-        required: true
-        type: string
       VAULT_CMD:
         required: true
         type: string
