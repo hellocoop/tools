@@ -121,9 +121,9 @@ jobs:
           docker push ${REPO_ARN}:${HELLO_VERSION}
           docker push ${REPO_ARN}:${GIT_COMMIT}
 
-      - name: Restart ECS Service
-        run: |
-          aws ecs update-service \
-            --cluster ${{ inputs.HELLO_SVR }}-cluster \
-            --service ${{ inputs.HELLO_SVR }}-service \
-            --force-new-deployment
+      # - name: Restart ECS Service
+      #   run: |
+      #     aws ecs update-service \
+      #       --cluster ${{ inputs.HELLO_SVR }}-cluster \
+      #       --service ${{ inputs.HELLO_SVR }}-service \
+      #       --force-new-deployment
