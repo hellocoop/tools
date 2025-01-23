@@ -12,7 +12,7 @@ on:
       WORKING_DIR:
         required: true
         type: string
-      TARGET:
+      TARGET_BRANCH:
         required: true
         type: string
       DOMAIN:
@@ -48,7 +48,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ inputs.TARGET }}
+          ref: ${{ inputs.TARGET_BRANCH }}
 
       - name: Get HELLO_VERSION
         run: |
@@ -57,7 +57,7 @@ jobs:
           echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Check repo version vs staged version
-        if: ${{ inputs.TARGET == 'main' }}
+        if: ${{ inputs.TARGET_BRANCH == 'main' }}
         run: |
           STAGE_VERSION=$(curl -sI "https://${{ inputs.DOMAIN }}/" | grep -i "x-amz-meta-version" | awk '{print $2}' | tr -d '\r')
           echo "HELLO_VERSION: $HELLO_VERSION"
@@ -100,7 +100,7 @@ jobs:
             if [ -f "$file" ]; then
               aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/ 
               # dont create version files when deploying to beta
-              if [ "${{ inputs.TARGET }}" != "beta" ]; then
+              if [ "${{ inputs.TARGET_BRANCH }}" != "beta" ]; then
                 aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/${HELLO_VERSION}/${file}
               fi
             fi

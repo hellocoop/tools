@@ -9,7 +9,7 @@ on:
       AWS_ACCOUNT:
         required: true
         type: string
-      TARGET:
+      TARGET_BRANCH:
         required: true
         type: string
       DOMAIN:
@@ -31,7 +31,7 @@ jobs:
     steps:
 
       - name: Check repo version vs staged version
-        if: ${{ github.event.inputs.TARGET == 'main' }}
+        if: ${{ github.event.inputs.TARGET_BRANCH == 'main' }}
         run: |
           STAGE_VERSION=$(curl -s https://${{inputs.DOMAIN}}/api/v1/version | jq -r '.VERSION')
           echo "HELLO_VERSION: $HELLO_VERSION"
@@ -68,7 +68,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ inputs.TARGET }}
+          ref: ${{ inputs.TARGET_BRANCH }}
 
       - name: Set HELLO_VERSION, GIT_COMMIT, IMAGE, ECR, and REPO_ARN
         run: |
