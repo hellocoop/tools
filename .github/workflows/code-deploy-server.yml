@@ -21,6 +21,9 @@ on:
       HELLO_SVR:
         required: true
         type: string
+      ENV:
+        required: true
+        type: string
 
 jobs:
   stage:
@@ -105,7 +108,7 @@ jobs:
           context: svr
           push: false # docker/build-push-action@v5 does not work with push to ECR
           load: true
-          tags: ${{ env.IMAGE }}:prod
+          tags: ${{ env.IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -114,10 +117,10 @@ jobs:
       
       - name: Push Image to ECR
         run: |
-          docker tag ${IMAGE}:prod ${REPO_ARN}:prod
-          docker tag ${IMAGE}:prod ${REPO_ARN}:${HELLO_VERSION}
-          docker tag ${IMAGE}:prod ${REPO_ARN}:${GIT_COMMIT}
-          docker push ${REPO_ARN}:prod
+          docker tag ${IMAGE}:latest ${REPO_ARN}:${{ inputs.ENV }}
+          docker tag ${IMAGE}:latest ${REPO_ARN}:${HELLO_VERSION}
+          docker tag ${IMAGE}:latest ${REPO_ARN}:${GIT_COMMIT}
+          docker push ${REPO_ARN}:${{ inputs.ENV }}
           docker push ${REPO_ARN}:${HELLO_VERSION}
           docker push ${REPO_ARN}:${GIT_COMMIT}
 
