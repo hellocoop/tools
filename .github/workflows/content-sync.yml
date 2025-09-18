@@ -58,7 +58,19 @@ jobs:
       - name: Copy S3 dir to S3 bucket with the AWS CLI
         run: |
           BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`BucketNameOutput`].OutputValue' --output text)
+
+          # First sync everything
+          # --delete is important to remove files that are no longer in the source directory
           aws s3 sync S3/ s3://${BUCKET_NAME}/ --delete
+
+          # Then re-upload only .md and .markdown files with explicit Content-Type
+          aws s3 cp S3/ s3://${BUCKET_NAME}/ \
+            --recursive \
+            --exclude "*" \
+            --include "*.md" \
+            --include "*.markdown" \
+            --content-type "text/plain; charset=utf-8" \
+            --metadata-directive REPLACE
 
       - name: Invalidate CloudFront cache
         run: |
