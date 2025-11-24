@@ -72,47 +72,36 @@ jobs:
             --content-type "text/plain; charset=utf-8" \
             --metadata-directive REPLACE
 
-          # Process redirects from redirects.txt file if it exists
-          # Format: /source.html -> /destination
-          # Check for redirects file (try redirects first, then redirects.txt)
-          REDIRECTS_FILE=""
-          if [ -f "redirects" ] && [ ! -d "redirects" ]; then
-            REDIRECTS_FILE="redirects"
-          elif [ -f "redirects.txt" ]; then
-            REDIRECTS_FILE="redirects.txt"
-          fi
-          
-          if [ -n "$REDIRECTS_FILE" ]; then
-            echo "Processing redirects from $REDIRECTS_FILE..."
-            while IFS= read -r line || [ -n "$line" ]; do
-              # Skip empty lines and comments
-              line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-              if [ -z "$line" ] || [ "${line:0:1}" = "#" ]; then
-                continue
-              fi
-              
-              # Parse the redirect: source -> destination (handles both -> and HTML entity &gt;)
-              if echo "$line" | grep -qE '->|&gt;'; then
-                source=$(echo "$line" | sed -E 's/[[:space:]]*(-&gt;|->)[[:space:]].*$//')
-                destination=$(echo "$line" | sed -E 's/^.*[[:space:]]*(-&gt;|->)[[:space:]]*//')
-                
+          # Process redirects from redirects.json file if it exists
+          # Format: Top-level JSON object with source paths as keys and destination paths as values
+          if [ -f "redirects.json" ]; then
+            echo "Processing redirects from redirects.json..."
+            
+            # Check if jq is available (should be on GitHub Actions runners)
+            if ! command -v jq &> /dev/null; then
+              echo "Error: jq is required to parse redirects.json but is not installed"
+              exit 1
+            fi
+            
+            # Parse JSON and create redirects
+            redirect_count=$(jq 'length' redirects.json)
+            echo "Found $redirect_count redirect(s) to process"
+            
+            jq -r 'to_entries[] | "\(.key)|\(.value)"' redirects.json | while IFS='|' read -r source destination; do
+              if [ -n "$source" ] && [ -n "$destination" ]; then
                 # Remove leading slash from source for S3 key (S3 keys don't start with /)
                 s3_key="${source#/}"
                 
-                if [ -n "$source" ] && [ -n "$destination" ]; then
-                  echo "Creating redirect: $source -> $destination"
-                  echo "" | aws s3 cp - "s3://${BUCKET_NAME}/${s3_key}" \
-                    --website-redirect "$destination" \
-                    --content-type "text/html"
-                else
-                  echo "Warning: Skipping malformed redirect line: $line"
-                fi
+                echo "Creating redirect: $source -> $destination"
+                echo "" | aws s3 cp - "s3://${BUCKET_NAME}/${s3_key}" \
+                  --website-redirect "$destination" \
+                  --content-type "text/html"
               else
-                echo "Warning: Skipping malformed redirect line: $line"
+                echo "Warning: Skipping redirect with missing source or destination"
               fi
-            done < "$REDIRECTS_FILE"
+            done
           else
-            echo "No redirects file found, skipping redirect setup"
+            echo "No redirects.json file found, skipping redirect setup"
           fi
 
       - name: Invalidate CloudFront cache
