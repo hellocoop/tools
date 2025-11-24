@@ -72,15 +72,48 @@ jobs:
             --content-type "text/plain; charset=utf-8" \
             --metadata-directive REPLACE
 
-          # Set up redirects for testing files using x-amz-website-redirect-location
-          # Redirect testing.html and testing-2.html to /testing/
-          echo "" | aws s3 cp - s3://${BUCKET_NAME}/testing.html \
-            --website-redirect "/testing/" \
-            --content-type "text/html"
+          # Process redirects from redirects.txt file if it exists
+          # Format: /source.html -> /destination
+          # Check for redirects file (try redirects first, then redirects.txt)
+          REDIRECTS_FILE=""
+          if [ -f "redirects" ] && [ ! -d "redirects" ]; then
+            REDIRECTS_FILE="redirects"
+          elif [ -f "redirects.txt" ]; then
+            REDIRECTS_FILE="redirects.txt"
+          fi
           
-          echo "" | aws s3 cp - s3://${BUCKET_NAME}/testing-2.html \
-            --website-redirect "/testing/" \
-            --content-type "text/html"
+          if [ -n "$REDIRECTS_FILE" ]; then
+            echo "Processing redirects from $REDIRECTS_FILE..."
+            while IFS= read -r line || [ -n "$line" ]; do
+              # Skip empty lines and comments
+              line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+              if [ -z "$line" ] || [ "${line:0:1}" = "#" ]; then
+                continue
+              fi
+              
+              # Parse the redirect: source -> destination (handles both -> and HTML entity &gt;)
+              if echo "$line" | grep -qE '->|&gt;'; then
+                source=$(echo "$line" | sed -E 's/[[:space:]]*(-&gt;|->)[[:space:]].*$//')
+                destination=$(echo "$line" | sed -E 's/^.*[[:space:]]*(-&gt;|->)[[:space:]]*//')
+                
+                # Remove leading slash from source for S3 key (S3 keys don't start with /)
+                s3_key="${source#/}"
+                
+                if [ -n "$source" ] && [ -n "$destination" ]; then
+                  echo "Creating redirect: $source -> $destination"
+                  echo "" | aws s3 cp - "s3://${BUCKET_NAME}/${s3_key}" \
+                    --website-redirect "$destination" \
+                    --content-type "text/html"
+                else
+                  echo "Warning: Skipping malformed redirect line: $line"
+                fi
+              else
+                echo "Warning: Skipping malformed redirect line: $line"
+              fi
+            done < "$REDIRECTS_FILE"
+          else
+            echo "No redirects file found, skipping redirect setup"
+          fi
 
       - name: Invalidate CloudFront cache
         run: |
