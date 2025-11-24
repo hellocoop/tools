@@ -79,7 +79,7 @@ jobs:
             --content-type "text/html"
           
           echo "" | aws s3 cp - s3://${BUCKET_NAME}/testing-2.html \
-            --website-redirect "/testing/" \
+            --website-redirect "https://www.hello.dev/pricing/" \
             --content-type "text/html"
 
           # Process redirects from redirects.json file if it exists
