@@ -72,6 +72,16 @@ jobs:
             --content-type "text/plain; charset=utf-8" \
             --metadata-directive REPLACE
 
+          # Set up redirects for testing files using x-amz-website-redirect-location
+          # Redirect testing.html and testing-2.html to /testing/
+          echo "" | aws s3 cp - s3://${BUCKET_NAME}/testing.html \
+            --website-redirect "/testing/" \
+            --content-type "text/html"
+          
+          echo "" | aws s3 cp - s3://${BUCKET_NAME}/testing-2.html \
+            --website-redirect "/testing/" \
+            --content-type "text/html"
+
       - name: Invalidate CloudFront cache
         run: |
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name ${{ inputs.STACK }} --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
