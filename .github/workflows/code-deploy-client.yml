@@ -98,10 +98,10 @@ jobs:
           cd ${{inputs.BUILD_DIR}}
           for file in *; do
             if [ -f "$file" ]; then
-              aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/ 
+              aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" --cache-control max-age=0 ${file} s3://${BUCKET_NAME}/
               # dont create version files when deploying to beta
               if [ "${{ inputs.TARGET_BRANCH }}" != "beta" ]; then
-                aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" ${file} s3://${BUCKET_NAME}/${HELLO_VERSION}/${file}
+                aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" --cache-control max-age=0 ${file} s3://${BUCKET_NAME}/${HELLO_VERSION}/${file}
               fi
             fi
           done
