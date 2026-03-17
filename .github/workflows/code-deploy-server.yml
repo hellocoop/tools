@@ -25,6 +25,9 @@ on:
         required: true
         type: string
 
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   stage:
     runs-on: hello_arm
@@ -54,7 +57,7 @@ jobs:
 
   
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v3
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_NAME }}
           aws-region: us-west-2
@@ -69,7 +72,7 @@ jobs:
           fi
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.TARGET_BRANCH }}
 

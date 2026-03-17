@@ -14,7 +14,8 @@ on:
         type: string
 
 env:
-  AWS_ACCOUNT: ${{ vars.HELLO_PROD_AWS }} # set at org level 
+  AWS_ACCOUNT: ${{ vars.HELLO_PROD_AWS }} # set at org level
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # GitHub-Slack app sends a workflow status message with live updates to #content-* channel
@@ -35,13 +36,13 @@ jobs:
           echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
 
       - name: Configure web-sync AWS credentials
-        uses: aws-actions/configure-aws-credentials@v3
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_NAME }} 
           aws-region: us-west-2
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install modules and cache
         uses: actions/setup-node@v4
