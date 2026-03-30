@@ -110,7 +110,21 @@ jobs:
           done
 
       - name: Copy S3 assets to S3 bucket with the AWS CLI
-        run: aws s3 cp --metadata version=${HELLO_VERSION} ${{inputs.BUILD_DIR}}/assets s3://${BUCKET_NAME}/assets --recursive 
+        run: aws s3 cp --metadata version=${HELLO_VERSION} ${{inputs.BUILD_DIR}}/assets s3://${BUCKET_NAME}/assets --recursive
+
+      - name: Upload .well-known directory if present
+        run: |
+          cd ${{inputs.BUILD_DIR}}
+          if [ -d ".well-known" ]; then
+            aws s3 cp --metadata version=${HELLO_VERSION} --content-type "application/json" --cache-control max-age=3600 .well-known/ s3://${BUCKET_NAME}/.well-known/ --recursive
+          fi
+
+      - name: Upload mobile fallback to sub-paths
+        run: |
+          cd ${{inputs.BUILD_DIR}}
+          if [ -f "mobile" ]; then
+            aws s3 cp --metadata version=${HELLO_VERSION} --content-type "text/html; charset=UTF-8" --cache-control max-age=0 mobile s3://${BUCKET_NAME}/mobile/callback
+          fi
 
       - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
