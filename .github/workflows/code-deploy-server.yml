@@ -79,7 +79,11 @@ jobs:
       - name: Set HELLO_VERSION, GIT_COMMIT, IMAGE, ECR, and REPO_ARN
         run: |
           VERSION=$(jq -r '.version' package.json)
-          GIT_SHA_SHORT=$(git rev-parse --short ${{ github.sha }})
+          # Use HEAD of the just-checked-out TARGET_BRANCH rather than
+          # github.sha. For pull_request_target events, github.sha is the
+          # base branch's tip *at event time*, which lags the post-merge
+          # tip and yields a stale commit label on the deployed image.
+          GIT_SHA_SHORT=$(git rev-parse --short HEAD)
           ECR=${{ inputs.AWS_ACCOUNT }}.dkr.ecr.${AWS_REGION}.amazonaws.com
           REPO_ARN=${ECR}/${IMAGE}
           echo "HELLO_VERSION=${VERSION}" >> $GITHUB_ENV
