@@ -21,6 +21,15 @@ on:
       BUILD_DIR:
         required: true
         type: string
+      EXTRA_DISTRIBUTION_STACKS:
+        required: false
+        type: string
+        default: ''
+        description: |
+          Optional comma-separated list of additional CDK stack names whose
+          DistributionIdOutput should also be invalidated after STACK's CF
+          is invalidated. The assumed role must have
+          cloudfront:CreateInvalidation on each. Example: "PersonStack".
 
 env:
     FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -128,3 +137,18 @@ jobs:
 
       - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
+
+      - name: Invalidate additional CloudFront distributions
+        if: ${{ inputs.EXTRA_DISTRIBUTION_STACKS != '' }}
+        run: |
+          IFS=',' read -ra STACKS <<< "${{ inputs.EXTRA_DISTRIBUTION_STACKS }}"
+          for STACK in "${STACKS[@]}"; do
+            STACK="${STACK// /}"
+            EXTRA_DIST_ID=$(aws cloudformation describe-stacks --stack-name "$STACK" --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
+            if [ -z "$EXTRA_DIST_ID" ] || [ "$EXTRA_DIST_ID" = "None" ]; then
+              echo "::error::DistributionIdOutput not found on stack $STACK"
+              exit 1
+            fi
+            echo "Invalidating $STACK ($EXTRA_DIST_ID)"
+            aws cloudfront create-invalidation --distribution-id "$EXTRA_DIST_ID" --paths "/*"
+          done
