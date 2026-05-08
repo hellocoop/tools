@@ -21,15 +21,22 @@ on:
       BUILD_DIR:
         required: true
         type: string
+      # TODO(cleanup): once Wallet beta is merged into main and all
+      # callers have stopped passing this input, remove both the input
+      # and the "Invalidate additional CloudFront distributions" step
+      # below. The WalletCoopStack ↔ PersonStack pairing is now handled
+      # automatically by the dedicated step further down — no caller
+      # needs to opt in. Kept here only so an in-flight Wallet beta
+      # workflow that still passes EXTRA_DISTRIBUTION_STACKS doesn't
+      # error with "unknown input".
       EXTRA_DISTRIBUTION_STACKS:
         required: false
         type: string
         default: ''
         description: |
-          Optional comma-separated list of additional CDK stack names whose
-          DistributionIdOutput should also be invalidated after STACK's CF
-          is invalidated. The assumed role must have
-          cloudfront:CreateInvalidation on each. Example: "PersonStack".
+          DEPRECATED — paired-distribution invalidation is now hard-coded
+          for WalletCoopStack ↔ PersonStack (see step below). Input kept
+          accepted for one merge cycle so existing callers don't break.
 
 env:
     FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -138,7 +145,40 @@ jobs:
       - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
 
-      - name: Invalidate additional CloudFront distributions
+      # WalletCoopStack and PersonStack share a single S3 bucket (the
+      # wallet bucket) — PersonStack's CloudFront distribution serves
+      # person.<domain> from that same origin. A client deploy that
+      # uploads to the wallet bucket therefore has to invalidate both
+      # distributions; otherwise person.<domain> serves stale assets
+      # until its default TTL expires.
+      #
+      # PersonStack grants this OIDC role cloudfront:CreateInvalidation
+      # on its distribution (non-prod only — prod client deploys go
+      # through hellocoop/Deploy with its own role + invalidation).
+      #
+      # Hard-coded coupling instead of a generic input because no other
+      # consumer of this reusable workflow has a paired distribution
+      # today. If that changes, switch to a configurable mapping.
+      - name: Invalidate paired Person distribution (WalletCoopStack only)
+        if: ${{ inputs.STACK == 'WalletCoopStack' }}
+        run: |
+          PERSON_DIST_ID=$(aws cloudformation describe-stacks --stack-name PersonStack --query 'Stacks[0].Outputs[?OutputKey==`DistributionIdOutput`].OutputValue' --output text)
+          if [ -z "$PERSON_DIST_ID" ] || [ "$PERSON_DIST_ID" = "None" ]; then
+            echo "::error::WalletCoopStack deploy expected a paired PersonStack with DistributionIdOutput, but none was found."
+            exit 1
+          fi
+          echo "Invalidating paired PersonStack ($PERSON_DIST_ID)"
+          aws cloudfront create-invalidation --distribution-id "$PERSON_DIST_ID" --paths "/*"
+
+      # TODO(cleanup): remove this step (and the EXTRA_DISTRIBUTION_STACKS
+      # input above) once Wallet's beta has merged to main and all caller
+      # workflows have dropped the input. Kept temporarily so an
+      # in-flight Wallet beta deploy that still passes the input doesn't
+      # break. Note: when both this AND the auto-paired step run for a
+      # WalletCoopStack deploy, PersonStack gets invalidated twice —
+      # harmless (CloudFront /* invalidations are effectively free) but
+      # noisy.
+      - name: Invalidate additional CloudFront distributions (DEPRECATED)
         if: ${{ inputs.EXTRA_DISTRIBUTION_STACKS != '' }}
         run: |
           IFS=',' read -ra STACKS <<< "${{ inputs.EXTRA_DISTRIBUTION_STACKS }}"
