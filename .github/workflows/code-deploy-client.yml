@@ -59,13 +59,13 @@ jobs:
           echo "ROLE_NAME=${ROLE_NAME}" >> $GITHUB_ENV
 
       - name: Configure web-sync AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.ROLE_NAME }} 
           aws-region: us-west-2
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.TARGET_BRANCH }}
 
@@ -88,7 +88,7 @@ jobs:
 
       # Restore npm dependencies -----------------------
       - name: Restore client node_modules
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: client-node-modules-cache
         with:
           path: ./${{ inputs.WORKING_DIR }}/node_modules
